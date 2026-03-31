@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>収支ダッシュボード</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg:#0f0f0f;--surface:#181818;--surface2:#222;--border:rgba(255,255,255,.08);
+  --border2:rgba(255,255,255,.14);--text:#f0ede8;--text2:#9a9690;--text3:#5c5956;
+  --inc:#4ade80;--inc-dim:rgba(74,222,128,.12);--exp:#f87171;--exp-dim:rgba(248,113,113,.12);
+  --accent:#e8d5b0;--accent-dim:rgba(232,213,176,.1);--r:12px;--rs:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;font-weight:300;min-height:100vh;line-height:1.6;}
+header{border-bottom:.5px solid var(--border);padding:1.25rem 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:rgba(15,15,15,.92);backdrop-filter:blur(12px);z-index:100;}
+.logo{font-family:'DM Mono',monospace;font-size:13px;letter-spacing:.15em;color:var(--accent);text-transform:uppercase;}
+.header-meta{font-size:12px;color:var(--text3);}
+.tab-bar{display:flex;gap:2px;padding:1.5rem 2rem 0;border-bottom:.5px solid var(--border);}
+.tab{padding:.6rem 1.2rem;font-size:13px;color:var(--text2);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-.5px;transition:color .15s,border-color .15s;font-family:inherit;font-weight:400;}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tab:hover:not(.active){color:var(--text);}
+.panel{display:none;padding:2rem;}
+.panel.active{display:block;}
+.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--border);border:.5px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1.5rem;}
+.metric{background:var(--surface);padding:1.25rem 1.5rem;}
+.metric-label{font-size:11px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.5rem;}
+.metric-value{font-family:'DM Mono',monospace;font-size:24px;font-weight:500;letter-spacing:-.02em;}
+.metric-sub{font-size:11px;color:var(--text3);margin-top:4px;}
+.v-inc{color:var(--inc);}.v-exp{color:var(--exp);}.v-pos{color:var(--inc);}.v-neg{color:var(--exp);}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;}
+@media(max-width:720px){.grid-2{grid-template-columns:1fr;}.metrics{grid-template-columns:1fr;}}
+.card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:1.25rem 1.5rem;}
+.card-title{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:1rem;}
+.filter-bar{display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;align-items:center;}
+select,input[type=text],input[type=number]{background:var(--surface2);border:.5px solid var(--border2);border-radius:var(--rs);color:var(--text);font-family:inherit;font-size:13px;padding:7px 12px;outline:none;transition:border-color .15s;}
+select:focus,input:focus{border-color:rgba(232,213,176,.4);}
+select option{background:#222;}
+.table-wrap{overflow-x:auto;}
+.table-scroll{max-height:400px;overflow-y:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;}
+th{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-weight:400;padding:8px 10px;border-bottom:.5px solid var(--border);text-align:left;}
+td{padding:9px 10px;border-bottom:.5px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text2);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--surface2);}
+.amt-inc{color:var(--inc);font-family:'DM Mono',monospace;}
+.amt-exp{color:var(--exp);font-family:'DM Mono',monospace;}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.bar-label{font-size:12px;color:var(--text2);width:100px;min-width:70px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;}
+.bar-track{flex:1;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:3px;transition:width .4s;}
+.bar-amt{font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);min-width:90px;text-align:right;}
+.drop-zone{border:1px dashed var(--border2);border-radius:var(--r);padding:2.5rem 1.5rem;text-align:center;cursor:pointer;transition:background .15s,border-color .15s;margin-bottom:1.5rem;}
+.drop-zone:hover,.drop-zone.over{background:var(--accent-dim);border-color:rgba(232,213,176,.3);}
+.drop-title{font-size:14px;color:var(--accent);margin-bottom:6px;}
+.drop-sub{font-size:12px;color:var(--text3);}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1rem;}
+.chip{display:flex;align-items:center;gap:6px;font-size:12px;padding:4px 10px;background:var(--surface2);border:.5px solid var(--border2);border-radius:999px;color:var(--text2);}
+.chip-del{background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;line-height:1;padding:0;transition:color .1s;}
+.chip-del:hover{color:var(--exp);}
+.entry-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.entry-row input{flex:1;min-width:0;}
+.entry-row .amt-in{width:120px;flex:none;}
+.del-btn{background:none;border:.5px solid var(--border2);border-radius:var(--rs);color:var(--text3);cursor:pointer;padding:5px 10px;font-size:14px;transition:color .1s,border-color .1s;}
+.del-btn:hover{color:var(--exp);border-color:var(--exp);}
+.add-btn{background:none;border:.5px solid var(--border2);border-radius:var(--rs);color:var(--text2);cursor:pointer;padding:6px 14px;font-size:13px;font-family:inherit;transition:background .15s,color .15s;margin-top:4px;}
+.add-btn:hover{background:var(--accent-dim);color:var(--accent);}
+.section-label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;}
+.note{font-size:12px;color:var(--text3);margin-bottom:1rem;padding:10px 14px;background:var(--surface2);border-radius:var(--rs);border-left:2px solid var(--border2);}
+.err{font-size:12px;color:var(--exp);margin-top:6px;}
+.chart-wrap{position:relative;width:100%;height:220px;}
+.row-count{font-size:12px;color:var(--text3);margin-bottom:8px;}
+.legend{display:flex;gap:16px;margin-bottom:10px;font-size:12px;color:var(--text2);}
+.legend span{display:flex;align-items:center;gap:5px;}
+.legend-dot{width:10px;height:10px;border-radius:2px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">収支ダッシュボード</div>
+  <div class="header-meta" id="header-meta">データなし</div>
+</header>
+
+<div class="tab-bar">
+  <button class="tab active" onclick="switchTab('csv')">CSV取り込み</button>
+  <button class="tab" onclick="switchTab('manual')">手動入力</button>
+  <button class="tab" onclick="switchTab('dashboard')">ダッシュボード</button>
+</div>
+
+<!-- CSV TAB -->
+<div class="panel active" id="tab-csv">
+  <div class="note">マネーフォワードME → 収支グラフ → 明細 → CSVダウンロード　で取得できます。複数月まとめてドロップ可能です。</div>
+  <div class="drop-zone" id="dropzone" onclick="document.getElementById('csvfile').click()">
+    <div class="drop-title">CSVファイルをここにドロップ</div>
+    <div class="drop-sub">複数ファイル同時OK・追加読み込みOK　/ クリックしてファイル選択</div>
+    <input type="file" id="csvfile" accept=".csv" multiple style="display:none">
+  </div>
+  <div class="chips" id="file-chips"></div>
+  <div class="err" id="err-msg"></div>
+
+  <div id="csv-summary" style="display:none">
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">収入合計</div><div class="metric-value v-inc" id="ci">¥0</div></div>
+      <div class="metric"><div class="metric-label">支出合計</div><div class="metric-value v-exp" id="ce">¥0</div></div>
+      <div class="metric"><div class="metric-label">収支バランス</div><div class="metric-value" id="cb">¥0</div></div>
+    </div>
+    <div class="filter-bar">
+      <select id="cf-month"><option value="">すべての月</option></select>
+      <select id="cf-type"><option value="">収入・支出すべて</option><option value="inc">収入のみ</option><option value="exp">支出のみ</option></select>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">月別収支</div>
+        <div class="legend">
+          <span><span class="legend-dot" style="background:rgba(74,222,128,.7)"></span>収入</span>
+          <span><span class="legend-dot" style="background:rgba(248,113,113,.7)"></span>支出</span>
+        </div>
+        <div class="chart-wrap"><canvas id="csv-month-chart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">支出カテゴリ</div>
+        <div id="csv-cat-bars"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:1rem;">
+      <div class="card-title">収支推移</div>
+      <div class="legend">
+        <span><span class="legend-dot" style="background:#4ade80"></span>収支バランス</span>
+      </div>
+      <div class="chart-wrap"><canvas id="csv-line-chart"></canvas></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div class="card-title" style="margin-bottom:0;">明細一覧</div>
+        <div class="row-count" id="csv-row-count"></div>
+      </div>
+      <div class="table-wrap table-scroll">
+        <table>
+          <thead><tr>
+            <th style="width:90px;">日付</th>
+            <th>内容</th>
+            <th style="width:80px;">カテゴリ</th>
+            <th style="width:90px;font-size:9px;">口座</th>
+            <th style="width:110px;text-align:right;">金額</th>
+          </tr></thead>
+          <tbody id="csv-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MANUAL TAB -->
+<div class="panel" id="tab-manual">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;">
+    <div>
+      <div class="section-label" style="color:var(--inc);">収入</div>
+      <div id="inc-rows"></div>
+      <button class="add-btn" onclick="addRow('inc')">+ 項目を追加</button>
+    </div>
+    <div>
+      <div class="section-label" style="color:var(--exp);">支出</div>
+      <div id="exp-rows"></div>
+      <button class="add-btn" onclick="addRow('exp')">+ 項目を追加</button>
+    </div>
+  </div>
+  <div class="metrics">
+    <div class="metric"><div class="metric-label">収入合計</div><div class="metric-value v-inc" id="mi">¥0</div></div>
+    <div class="metric"><div class="metric-label">支出合計</div><div class="metric-value v-exp" id="me">¥0</div></div>
+    <div class="metric"><div class="metric-label">収支バランス</div><div class="metric-value" id="mb">¥0</div></div>
+  </div>
+</div>
+
+<!-- DASHBOARD TAB -->
+<div class="panel" id="tab-dashboard">
+  <div id="dash-empty" style="text-align:center;padding:4rem 0;color:var(--text3);font-size:14px;">
+    CSVを取り込むか、手動入力でデータを追加してください
+  </div>
+  <div id="dash-content" style="display:none">
+    <div class="metrics" style="margin-bottom:1.5rem;">
+      <div class="metric"><div class="metric-label">収入合計（全ソース）</div><div class="metric-value v-inc" id="di">¥0</div></div>
+      <div class="metric"><div class="metric-label">支出合計（全ソース）</div><div class="metric-value v-exp" id="de">¥0</div></div>
+      <div class="metric"><div class="metric-label">収支バランス</div><div class="metric-value" id="db">¥0</div></div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">月別収支 (CSV)</div>
+        <div class="legend">
+          <span><span class="legend-dot" style="background:rgba(74,222,128,.7)"></span>収入</span>
+          <span><span class="legend-dot" style="background:rgba(248,113,113,.7)"></span>支出</span>
+        </div>
+        <div class="chart-wrap"><canvas id="dash-month-chart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">支出カテゴリ（全期間）</div>
+        <div id="dash-cat-bars"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:1rem;">
+      <div class="card-title">収支推移</div>
+      <div class="legend">
+        <span><span class="legend-dot" style="background:#4ade80"></span>収支バランス</span>
+      </div>
+      <div class="chart-wrap"><canvas id="dash-line-chart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* STATE */
+let csvFileMap = {};
+let manualInc = [{id:1,name:'給与',amt:0},{id:2,name:'副業',amt:0}];
+let manualExp = [{id:10,name:'家賃',amt:0},{id:11,name:'食費',amt:0},{id:12,name:'光熱費',amt:0},{id:13,name:'交通費',amt:0}];
+let nextId = 20;
+let csvChart = null, dashChart = null, csvLineChart = null, dashLineChart = null;
+
+/* STORAGE */
+function saveStorage() {
+  try {
+    localStorage.setItem('kakeibo_csv', JSON.stringify(csvFileMap));
+    localStorage.setItem('kakeibo_inc', JSON.stringify(manualInc));
+    localStorage.setItem('kakeibo_exp', JSON.stringify(manualExp));
+    localStorage.setItem('kakeibo_nextId', String(nextId));
+  } catch(e) {}
+}
+function loadStorage() {
+  try {
+    const csv = localStorage.getItem('kakeibo_csv');
+    if (csv) csvFileMap = JSON.parse(csv);
+    const inc = localStorage.getItem('kakeibo_inc');
+    if (inc) manualInc = JSON.parse(inc);
+    const exp = localStorage.getItem('kakeibo_exp');
+    if (exp) manualExp = JSON.parse(exp);
+    const nid = localStorage.getItem('kakeibo_nextId');
+    if (nid) nextId = parseInt(nid, 10);
+  } catch(e) {}
+}
+
+/* UTILS */
+const fmt = n => '¥' + Math.round(Math.abs(n)).toLocaleString('ja-JP');
+
+/* TABS */
+function switchTab(id) {
+  ['csv','manual','dashboard'].forEach((t,i) => document.querySelectorAll('.tab')[i].classList.toggle('active', t===id));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  if (id === 'dashboard') renderDashboard();
+}
+
+/* CSV PARSE */
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l=>l.trim());
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(',').map(h=>h.replace(/^"|"$/g,'').trim());
+  return lines.slice(1).map(line => {
+    const cols = line.match(/(".*?"|[^,]+|(?<=,)(?=,)|(?<=,)$|^(?=,))/g)||[];
+    const clean = cols.map(c=>c.replace(/^"|"$/g,'').trim());
+    const obj = {}; headers.forEach((h,i)=>{obj[h]=clean[i]||'';});
+    return obj;
+  }).filter(r=>Object.values(r).some(v=>v));
+}
+
+function detectFields(rows) {
+  if (!rows.length) return null;
+  const keys = Object.keys(rows[0]);
+  return {
+    dateKey: keys.find(k=>/日付|date/i.test(k)),
+    nameKey: keys.find(k=>/内容|名前|摘要|name/i.test(k)),
+    catKey:  keys.find(k=>/カテゴリ|大項目|category/i.test(k)),
+    amtKey:  keys.find(k=>/金額|amount/i.test(k)),
+    typeKey: keys.find(k=>/収支|type|種別/i.test(k)),
+    bankKey: keys.find(k=>/保有金融機関|口座|bank/i.test(k)),
+  };
+}
+
+function processCSV(raw, filename) {
+  const f = detectFields(raw);
+  if (!f || !f.amtKey) return null;
+  return raw.map(r => {
+    const amtStr = (r[f.amtKey]||'').replace(/,/g,'').replace(/円/g,'').trim();
+    const amt = parseFloat(amtStr)||0;
+    const typeStr = f.typeKey ? (r[f.typeKey]||'') : '';
+    const isInc = /収入|income/i.test(typeStr) || amt > 0;
+    return {
+      date:  f.dateKey?r[f.dateKey]:'',
+      name:  f.nameKey?r[f.nameKey]:'',
+      cat:   f.catKey ?r[f.catKey] :'未分類',
+      amt:   isInc ? Math.abs(amt) : -Math.abs(amt),
+      type:  isInc ? 'inc' : 'exp',
+      bank:  f.bankKey?r[f.bankKey]:'',
+      month: (f.dateKey?r[f.dateKey]:'').slice(0,7),
+    };
+  }).filter(r=>r.amt!==0);
+}
+
+/* CSV LOAD */
+function loadFiles(files) {
+  document.getElementById('err-msg').textContent = '';
+  let pending = files.length;
+  Array.from(files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const text = new TextDecoder('shift_jis').decode(ev.target.result);
+      const raw = parseCSV(text);
+      const rows = processCSV(raw, file.name);
+      if (!rows) document.getElementById('err-msg').textContent += `「${file.name}」を認識できませんでした。`;
+      else csvFileMap[file.name] = rows;
+      if (--pending === 0) { saveStorage(); renderChips(); refreshCSV(); }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function renderChips() {
+  document.getElementById('file-chips').innerHTML = Object.keys(csvFileMap).map(n=>`
+    <div class="chip"><span>${n}</span><button class="chip-del" onclick="removeFile('${n.replace(/'/g,"\\'")}')">×</button></div>`).join('');
+}
+
+function removeFile(name) { delete csvFileMap[name]; saveStorage(); renderChips(); refreshCSV(); }
+
+function allCSV() { return Object.values(csvFileMap).flat(); }
+
+function refreshCSV() {
+  const all = allCSV();
+  document.getElementById('csv-summary').style.display = all.length ? 'block' : 'none';
+  if (!all.length) return;
+  const months = [...new Set(all.map(r=>r.month).filter(Boolean))].sort().reverse();
+  const sel = document.getElementById('cf-month');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">すべての月</option>' + months.map(m=>`<option value="${m}">${m}</option>`).join('');
+  if (prev) sel.value = prev;
+  applyCSVFilter();
+  updateMeta();
+}
+
+function applyCSVFilter() {
+  const all = allCSV();
+  const month = document.getElementById('cf-month').value;
+  const type  = document.getElementById('cf-type').value;
+  let rows = all;
+  if (month) rows = rows.filter(r=>r.month===month);
+  if (type)  rows = rows.filter(r=>r.type===type);
+  renderCSV(rows, all);
+}
+
+function renderCSV(rows, all) {
+  const inc = rows.filter(r=>r.type==='inc').reduce((s,r)=>s+r.amt,0);
+  const exp = rows.filter(r=>r.type==='exp').reduce((s,r)=>s+Math.abs(r.amt),0);
+  const bal = inc-exp;
+  document.getElementById('ci').textContent = fmt(inc);
+  document.getElementById('ce').textContent = fmt(exp);
+  const cb = document.getElementById('cb');
+  cb.textContent = (bal>=0?'+':'-')+fmt(bal);
+  cb.className = 'metric-value '+(bal>=0?'v-pos':'v-neg');
+
+  const months = [...new Set(all.map(r=>r.month).filter(Boolean))].sort();
+  const mInc = months.map(m=>all.filter(r=>r.month===m&&r.type==='inc').reduce((s,r)=>s+r.amt,0));
+  const mExp = months.map(m=>all.filter(r=>r.month===m&&r.type==='exp').reduce((s,r)=>s+Math.abs(r.amt),0));
+  csvChart = renderBarChart('csv-month-chart', months.map(m=>m.slice(5)), mInc, mExp, csvChart);
+  const mBal = mInc.map((v,i) => v - mExp[i]);
+  csvLineChart = renderLineChart('csv-line-chart', months.map(m=>m.slice(5)), mBal, csvLineChart);
+  renderCatBars('csv-cat-bars', rows);
+  renderTable(rows);
+}
+
+/* CHART */
+function renderBarChart(canvasId, labels, inc, exp, ref) {
+  if (ref) ref.destroy();
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  return new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [
+      {label:'収入',data:inc,backgroundColor:'rgba(74,222,128,.5)',borderColor:'#4ade80',borderWidth:1,borderRadius:3},
+      {label:'支出',data:exp,backgroundColor:'rgba(248,113,113,.5)',borderColor:'#f87171',borderWidth:1,borderRadius:3},
+    ]},
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#5c5956',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},
+        y:{ticks:{color:'#5c5956',font:{size:10},callback:v=>'¥'+(v/10000).toFixed(0)+'万'},grid:{color:'rgba(255,255,255,.06)'}},
+      }
+    }
+  });
+}
+
+/* LINE CHART */
+function renderLineChart(canvasId, labels, balances, ref) {
+  if (ref) ref.destroy();
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  const colors = balances.map(v => v >= 0 ? '#4ade80' : '#f87171');
+  return new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets: [{
+      label: '収支バランス',
+      data: balances,
+      borderColor: '#e8d5b0',
+      backgroundColor: 'rgba(232,213,176,.08)',
+      pointBackgroundColor: colors,
+      pointBorderColor: colors,
+      pointRadius: 4,
+      fill: true,
+      tension: 0.3,
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#5c5956', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.04)' } },
+        y: { ticks: { color: '#5c5956', font: { size: 10 }, callback: v => '¥' + (v / 10000).toFixed(0) + '万' }, grid: { color: 'rgba(255,255,255,.06)' } },
+      }
+    }
+  });
+}
+
+/* CAT BARS */
+const palette = ['#f87171','#fb923c','#fbbf24','#a3e635','#34d399','#38bdf8','#818cf8','#e879f9','#f472b6','#94a3b8'];
+function renderCatBars(id, rows) {
+  const catMap = {};
+  rows.filter(r=>r.type==='exp').forEach(r=>{catMap[r.cat]=(catMap[r.cat]||0)+Math.abs(r.amt);});
+  const cats = Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const max = cats[0]?cats[0][1]:1;
+  document.getElementById(id).innerHTML = cats.map(([c,v],i)=>`
+    <div class="bar-row">
+      <div class="bar-label" title="${c}">${c}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(v/max*100).toFixed(1)}%;background:${palette[i%palette.length]};"></div></div>
+      <div class="bar-amt">${fmt(v)}</div>
+    </div>`).join('')||'<div style="font-size:12px;color:var(--text3);padding:4px 0;">支出データなし</div>';
+}
+
+/* TABLE */
+function renderTable(rows) {
+  const sorted = [...rows].sort((a,b)=>b.date.localeCompare(a.date));
+  const display = sorted.slice(0,500);
+  document.getElementById('csv-row-count').textContent = rows.length+'件'+(rows.length>500?' (新しい順500件)':'');
+  document.getElementById('csv-tbody').innerHTML = display.map(r=>`
+    <tr>
+      <td>${r.date}</td>
+      <td title="${r.name}">${r.name}</td>
+      <td>${r.cat}</td>
+      <td title="${r.bank}" style="font-size:11px;color:var(--text3);">${r.bank.split(' - ')[0]}</td>
+      <td style="text-align:right;" class="${r.type==='inc'?'amt-inc':'amt-exp'}">${r.type==='inc'?'+':'-'}${fmt(r.amt)}</td>
+    </tr>`).join('');
+}
+
+/* MANUAL */
+function renderManual() {
+  ['inc','exp'].forEach(type=>{
+    const arr = type==='inc'?manualInc:manualExp;
+    const container = document.getElementById(type+'-rows');
+    container.innerHTML='';
+    arr.forEach(row=>{
+      const div=document.createElement('div');
+      div.className='entry-row';
+      div.innerHTML=`
+        <input type="text" placeholder="項目名" value="${row.name}" oninput="updManual('${type}',${row.id},'name',this.value)">
+        <input type="number" class="amt-in" placeholder="金額" value="${row.amt||''}" min="0" oninput="updManual('${type}',${row.id},'amt',this.value)">
+        <button class="del-btn" onclick="delRow('${type}',${row.id})">×</button>`;
+      container.appendChild(div);
+    });
+  });
+  calcManual();
+}
+function updManual(type,id,field,val){
+  const arr=type==='inc'?manualInc:manualExp;
+  const row=arr.find(r=>r.id===id);
+  if(!row)return;
+  row[field]=field==='amt'?(parseFloat(val)||0):val;
+  calcManual();
+}
+function addRow(type){
+  (type==='inc'?manualInc:manualExp).push({id:nextId++,name:'',amt:0});
+  renderManual();
+}
+function delRow(type,id){
+  if(type==='inc')manualInc=manualInc.filter(r=>r.id!==id);
+  else manualExp=manualExp.filter(r=>r.id!==id);
+  renderManual();
+}
+function calcManual(){
+  saveStorage();
+  const inc=manualInc.reduce((s,r)=>s+(r.amt||0),0);
+  const exp=manualExp.reduce((s,r)=>s+(r.amt||0),0);
+  const bal=inc-exp;
+  document.getElementById('mi').textContent=fmt(inc);
+  document.getElementById('me').textContent=fmt(exp);
+  const mb=document.getElementById('mb');
+  mb.textContent=(bal>=0?'+':'-')+fmt(bal);
+  mb.className='metric-value '+(bal>=0?'v-pos':'v-neg');
+}
+
+/* DASHBOARD */
+function renderDashboard(){
+  const csvRows=allCSV();
+  const mInc=manualInc.reduce((s,r)=>s+(r.amt||0),0);
+  const mExp=manualExp.reduce((s,r)=>s+(r.amt||0),0);
+  const hasData=csvRows.length>0||mInc>0||mExp>0;
+  document.getElementById('dash-empty').style.display=hasData?'none':'block';
+  document.getElementById('dash-content').style.display=hasData?'block':'none';
+  if(!hasData)return;
+  const csvInc=csvRows.filter(r=>r.type==='inc').reduce((s,r)=>s+r.amt,0);
+  const csvExp=csvRows.filter(r=>r.type==='exp').reduce((s,r)=>s+Math.abs(r.amt),0);
+  const tInc=csvInc+mInc, tExp=csvExp+mExp, bal=tInc-tExp;
+  document.getElementById('di').textContent=fmt(tInc);
+  document.getElementById('de').textContent=fmt(tExp);
+  const db=document.getElementById('db');
+  db.textContent=(bal>=0?'+':'-')+fmt(bal);
+  db.className='metric-value '+(bal>=0?'v-pos':'v-neg');
+  if(csvRows.length){
+    const months=[...new Set(csvRows.map(r=>r.month).filter(Boolean))].sort();
+    const mi=months.map(m=>csvRows.filter(r=>r.month===m&&r.type==='inc').reduce((s,r)=>s+r.amt,0));
+    const me=months.map(m=>csvRows.filter(r=>r.month===m&&r.type==='exp').reduce((s,r)=>s+Math.abs(r.amt),0));
+    dashChart=renderBarChart('dash-month-chart',months.map(m=>m.slice(5)),mi,me,dashChart);
+    const mBal=mi.map((v,i)=>v-me[i]);
+    dashLineChart=renderLineChart('dash-line-chart',months.map(m=>m.slice(5)),mBal,dashLineChart);
+  }
+  renderCatBars('dash-cat-bars',csvRows);
+}
+
+/* META */
+function updateMeta(){
+  const all=allCSV();
+  if(!all.length){document.getElementById('header-meta').textContent='データなし';return;}
+  const months=[...new Set(all.map(r=>r.month).filter(Boolean))].sort();
+  document.getElementById('header-meta').textContent=`${months[0]} 〜 ${months[months.length-1]}　${all.length.toLocaleString()}件`;
+}
+
+/* FILE DROP */
+document.getElementById('csvfile').onchange=function(e){if(e.target.files.length)loadFiles(e.target.files);e.target.value='';};
+const dz=document.getElementById('dropzone');
+dz.ondragover=e=>{e.preventDefault();dz.classList.add('over');};
+dz.ondragleave=()=>dz.classList.remove('over');
+dz.ondrop=e=>{e.preventDefault();dz.classList.remove('over');loadFiles(e.dataTransfer.files);};
+document.getElementById('cf-month').onchange=applyCSVFilter;
+document.getElementById('cf-type').onchange=applyCSVFilter;
+
+loadStorage();
+renderManual();
+if (Object.keys(csvFileMap).length) { renderChips(); refreshCSV(); }
+</script>
+</body>
+</html>
