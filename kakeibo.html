@@ -177,6 +177,21 @@ tr:hover td{background:var(--surface2);}
   .result-table tr td:first-child{color:#555!important;}
 }
 
+/* ASSET HISTORY */
+.drop-zone.ah-zone:hover,.drop-zone.ah-zone.over{background:rgba(167,139,250,.08);border-color:rgba(167,139,250,.35);}
+.recon-table{width:100%;border-collapse:collapse;font-size:12px;}
+.recon-table th{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);padding:6px 10px;border-bottom:.5px solid var(--border);text-align:right;}
+.recon-table th:first-child,.recon-table th:nth-child(2){text-align:left;}
+.recon-table td{padding:7px 10px;border-bottom:.5px solid var(--border);text-align:right;font-family:'DM Mono',monospace;color:var(--text2);}
+.recon-table td:first-child{text-align:left;font-family:inherit;}
+.recon-table td:nth-child(2){text-align:left;}
+.recon-table tr:hover td{background:var(--surface2);}
+.recon-ok{color:var(--inc);}.recon-warn{color:var(--accent);}.recon-bad{color:var(--exp);}
+.recon-status{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;}
+.tax-link-btn{display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(232,213,176,.06);border:.5px solid rgba(232,213,176,.2);border-radius:var(--rs);margin-bottom:1rem;}
+.tax-link-label{font-size:13px;color:var(--text2);flex:1;}
+.tax-link-detail{font-size:11px;color:var(--text3);}
+
 /* MODAL */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
 .modal-bg.open{display:flex;}
@@ -254,6 +269,41 @@ tr:hover td{background:var(--surface2);}
         <div style="font-size:11px;color:var(--text3);margin-top:4px;">「CSV取り込み」タブ → 口座・資産残高 から入力</div>
       </div>
     </div>
+    <!-- Asset History Section (shown when assetHistory is loaded) -->
+    <div id="dash-ah-section" style="display:none">
+      <div class="metrics metrics-4" style="margin-bottom:1rem;">
+        <div class="metric"><div class="metric-label">現在の総資産</div><div class="metric-value" style="color:#a78bfa;" id="ah-total">¥0</div><div class="metric-sub" id="ah-total-sub"></div></div>
+        <div class="metric"><div class="metric-label">前月比</div><div class="metric-value" id="ah-mom">—</div><div class="metric-sub" id="ah-mom-sub"></div></div>
+        <div class="metric"><div class="metric-label">年初比（今年）</div><div class="metric-value" id="ah-yoy">—</div><div class="metric-sub" id="ah-yoy-sub"></div></div>
+        <div class="metric"><div class="metric-label">照合ずれ（直近月）</div><div class="metric-value" id="ah-gap">—</div><div class="metric-sub" id="ah-gap-sub"></div></div>
+      </div>
+      <div class="card" style="margin-bottom:1rem;">
+        <div class="card-title">総資産推移</div>
+        <div class="legend">
+          <span><span class="legend-dot" style="background:#a78bfa;border-radius:50%;"></span>総資産</span>
+          <span><span class="legend-dot" style="background:#4ade80;"></span>預金・現金</span>
+          <span><span class="legend-dot" style="background:#38bdf8;"></span>投資信託</span>
+          <span><span class="legend-dot" style="background:#f87171;"></span>株式</span>
+          <span><span class="legend-dot" style="background:#fb923c;"></span>年金</span>
+        </div>
+        <div class="chart-wrap-lg"><canvas id="dash-ah-chart"></canvas></div>
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <div class="card-title" style="margin-bottom:0;">収支照合チェック</div>
+          <span style="font-size:11px;color:var(--text3);">資産増減 vs 収入−支出 の差（投資損益・未記録取引等を反映）</span>
+        </div>
+        <div style="overflow-x:auto;"><table class="recon-table" id="dash-recon-table">
+          <thead><tr>
+            <th>月</th><th>状態</th>
+            <th>期末資産</th><th>資産増減</th>
+            <th>収入</th><th>支出</th><th>収支差引</th>
+            <th>ずれ</th>
+          </tr></thead>
+          <tbody id="dash-recon-body"></tbody>
+        </table></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -266,6 +316,12 @@ tr:hover td{background:var(--surface2);}
     <input type="file" id="csvfile" accept=".csv" multiple style="display:none">
   </div>
   <div id="file-summary"></div>
+  <div class="drop-zone ah-zone" id="asset-hist-dropzone" onclick="document.getElementById('assethistfile').click()" style="border-color:rgba(167,139,250,.3);">
+    <div class="drop-title" style="color:#a78bfa;">資産推移CSVをここにドロップ（任意）</div>
+    <div class="drop-sub">マネーフォワードME → 資産 → 資産推移 → 月次 → CSVダウンロード</div>
+    <input type="file" id="assethistfile" accept=".csv" style="display:none">
+  </div>
+  <div id="asset-hist-summary"></div>
   <div class="card" style="margin-bottom:1rem;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
       <div class="card-title" style="margin-bottom:0;color:var(--asset);">口座・資産残高（任意）</div>
@@ -352,6 +408,21 @@ tr:hover td{background:var(--surface2);}
 <!-- TAX TAB -->
 <div class="panel" id="tab-tax">
   <div class="note no-print" style="margin-bottom:1.5rem;">この試算は参考値です。実際の申告は e-Tax または税務署窓口でご確認ください。</div>
+
+  <!-- 一括連携 -->
+  <div class="card tax-section no-print" id="tax-link-card">
+    <div class="card-title">ダッシュボードから自動取得</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:1rem;">CSVデータと入力済みの値をもとに、以下の項目を自動で入力します。</div>
+    <div class="tax-link-btn" onclick="taxAutoFill()">
+      <span style="font-size:18px;">⟳</span>
+      <div>
+        <div class="tax-link-label">選択年度のデータを一括取得</div>
+        <div class="tax-link-detail" id="tax-link-detail">年度を選択してから実行してください</div>
+      </div>
+      <button class="action-btn" style="flex-shrink:0;" onclick="taxAutoFill();event.stopPropagation();">実行</button>
+    </div>
+    <div id="tax-link-result" style="font-size:12px;color:var(--text3);"></div>
+  </div>
 
   <!-- 年度・申告種類 -->
   <div class="card tax-section">
@@ -636,6 +707,7 @@ function saveStorage() {
   try {
     localStorage.setItem('kakeibo_csv', JSON.stringify(csvFileMap));
     localStorage.setItem('kakeibo_assets', JSON.stringify(manualAssets));
+    localStorage.setItem('kakeibo_ah', JSON.stringify(assetHistory));
     localStorage.setItem('kakeibo_inc', JSON.stringify(manualInc));
     localStorage.setItem('kakeibo_exp', JSON.stringify(manualExp));
     localStorage.setItem('kakeibo_nextId', String(nextId));
@@ -647,6 +719,8 @@ function loadStorage() {
     if (csv) csvFileMap = JSON.parse(csv);
     const assets = localStorage.getItem('kakeibo_assets');
     if (assets) manualAssets = JSON.parse(assets);
+    const ah = localStorage.getItem('kakeibo_ah');
+    if (ah) assetHistory = JSON.parse(ah);
     const inc = localStorage.getItem('kakeibo_inc');
     if (inc) manualInc = JSON.parse(inc);
     const exp = localStorage.getItem('kakeibo_exp');
@@ -1098,6 +1172,8 @@ function renderDashboard() {
   document.getElementById('dash-asset-card').style.display    = hasAsset?'block':'none';
   document.getElementById('dash-no-asset-card').style.display = hasAsset?'none':'block';
   if (hasAsset) renderAssetChart(validAssets);
+
+  renderAssetHist();
 }
 
 /* META */
@@ -1120,6 +1196,179 @@ dz.ondrop=e=>{e.preventDefault();dz.classList.remove('over');loadFiles(e.dataTra
 
 document.getElementById('cf-month').onchange=applyCSVFilter;
 document.getElementById('cf-type').onchange=applyCSVFilter;
+
+/* ===== ASSET HISTORY ===== */
+let assetHistory = [];
+let ahChart = null, ahChart2 = null;
+
+const AH_COLS = ['total','cash','stocks','stocksM','funds','pension','points','other'];
+
+function parseAssetHistCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return [];
+  return lines.slice(1).map(line => {
+    const cols = line.split(',').map(c => c.replace(/^"|"$/g,'').trim());
+    if (!cols[0] || !cols[1]) return null;
+    const obj = { date: cols[0], month: cols[0].slice(0,7) };
+    AH_COLS.forEach((k,i) => { obj[k] = parseInt(cols[i+1])||0; });
+    return obj;
+  }).filter(Boolean);
+}
+
+function loadAssetHistFile(files) {
+  Array.from(files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const text = new TextDecoder('shift_jis').decode(ev.target.result);
+      const rows = parseAssetHistCSV(text);
+      if (!rows.length) return;
+      // keep last entry per month (month-end)
+      const byMonth = {};
+      rows.forEach(r => { byMonth[r.month] = r; });
+      assetHistory = Object.values(byMonth).sort((a,b)=>a.month.localeCompare(b.month));
+      saveStorage();
+      renderAssetHistSummary();
+      renderDashboard();
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function renderAssetHistSummary() {
+  const el = document.getElementById('asset-hist-summary');
+  if (!assetHistory.length) { el.innerHTML=''; return; }
+  const latest = assetHistory[assetHistory.length-1];
+  el.innerHTML = `
+    <div class="file-summary-bar" style="border-color:rgba(167,139,250,.3);">
+      <span style="font-size:13px;color:#a78bfa;">◈</span>
+      <span class="file-summary-text"><strong>資産推移CSV読み込み済み</strong>　${assetHistory.length}ヶ月分　最新: ${latest.month}　総資産 ${fmt(latest.total)}</span>
+      <button class="action-btn" onclick="clearAssetHist()">削除</button>
+    </div>`;
+}
+function clearAssetHist() { assetHistory=[]; saveStorage(); renderAssetHistSummary(); renderDashboard(); }
+
+function renderAssetHist() {
+  const section = document.getElementById('dash-ah-section');
+  if (!assetHistory.length) { section.style.display='none'; return; }
+  section.style.display = 'block';
+
+  const latest = assetHistory[assetHistory.length-1];
+  const prev   = assetHistory[assetHistory.length-2];
+  const nowY   = new Date().getFullYear();
+  const yearStart = assetHistory.find(r=>r.month.startsWith(String(nowY)));
+
+  document.getElementById('ah-total').textContent = fmt(latest.total);
+  document.getElementById('ah-total-sub').textContent = latest.month;
+
+  if (prev) {
+    const mom = latest.total - prev.total;
+    document.getElementById('ah-mom').textContent = (mom>=0?'+':'-')+fmt(mom);
+    document.getElementById('ah-mom').className = 'metric-value '+(mom>=0?'v-pos':'v-neg');
+    document.getElementById('ah-mom-sub').textContent = prev.month+'比';
+  }
+  if (yearStart) {
+    const yoy = latest.total - yearStart.total;
+    document.getElementById('ah-yoy').textContent = (yoy>=0?'+':'-')+fmt(yoy);
+    document.getElementById('ah-yoy').className = 'metric-value '+(yoy>=0?'v-pos':'v-neg');
+    document.getElementById('ah-yoy-sub').textContent = nowY+'年初比';
+  }
+
+  // Asset history chart
+  const labels = assetHistory.map(r=>r.month.slice(5));
+  if (ahChart) ahChart.destroy();
+  const ctx1 = document.getElementById('dash-ah-chart').getContext('2d');
+  ahChart = new Chart(ctx1, {
+    type:'line',
+    data:{ labels, datasets:[
+      {label:'総資産',data:assetHistory.map(r=>r.total),borderColor:'#a78bfa',backgroundColor:'rgba(167,139,250,.08)',tension:.3,fill:true,pointRadius:2,borderWidth:2},
+      {label:'預金・現金',data:assetHistory.map(r=>r.cash),borderColor:'#4ade80',backgroundColor:'transparent',tension:.3,pointRadius:0,borderWidth:1.5},
+      {label:'投資信託',data:assetHistory.map(r=>r.funds),borderColor:'#38bdf8',backgroundColor:'transparent',tension:.3,pointRadius:0,borderWidth:1.5},
+      {label:'株式',data:assetHistory.map(r=>r.stocks+r.stocksM),borderColor:'#f87171',backgroundColor:'transparent',tension:.3,pointRadius:0,borderWidth:1.5},
+      {label:'年金',data:assetHistory.map(r=>r.pension),borderColor:'#fb923c',backgroundColor:'transparent',tension:.3,pointRadius:0,borderWidth:1.5},
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.raw)}`}}},
+      scales:{
+        x:{ticks:{color:'#5c5956',font:{size:10},maxRotation:0,autoSkip:true,maxTicksLimit:18},grid:{color:'rgba(255,255,255,.03)'}},
+        y:{ticks:{color:'#5c5956',font:{size:10},callback:v=>'¥'+(v/10000000).toFixed(0)+'千万'},grid:{color:'rgba(255,255,255,.05)'}},
+      }
+    }
+  });
+
+  renderRecon();
+}
+
+function renderRecon() {
+  const all = allCSV();
+  const tbody = document.getElementById('dash-recon-body');
+  if (!assetHistory.length) { tbody.innerHTML=''; return; }
+
+  // build month-end asset map
+  const ahMap = {};
+  assetHistory.forEach(r=>{ ahMap[r.month]=r.total; });
+  const ahMonths = assetHistory.map(r=>r.month);
+
+  // build income/expense by month
+  const txMap = {};
+  all.forEach(r=>{
+    if (!txMap[r.month]) txMap[r.month]={inc:0,exp:0};
+    if (r.type==='inc') txMap[r.month].inc += r.amt;
+    else txMap[r.month].exp += Math.abs(r.amt);
+  });
+
+  const rows = [];
+  let totalGap = 0, gapCount = 0;
+  ahMonths.forEach((m,i) => {
+    const assetNow  = ahMap[m] || 0;
+    const assetPrev = i>0 ? (ahMap[ahMonths[i-1]]||0) : null;
+    const assetChg  = assetPrev !== null ? assetNow - assetPrev : null;
+    const tx = txMap[m] || null;
+    const netInc    = tx ? tx.inc - tx.exp : null;
+    const gap       = (assetChg !== null && netInc !== null) ? assetChg - netInc : null;
+    if (gap !== null) { totalGap += gap; gapCount++; }
+
+    const gapCls = gap===null?'' : Math.abs(gap)<50000?'recon-ok':Math.abs(gap)<300000?'recon-warn':'recon-bad';
+    const dot    = gap===null?'' : `<span class="recon-status" style="background:${gapCls==='recon-ok'?'#4ade80':gapCls==='recon-warn'?'#e8d5b0':'#f87171'};"></span>`;
+    const statusTxt = gap===null?'—':Math.abs(gap)<50000?'OK':Math.abs(gap)<300000?'要確認':'要調査';
+
+    rows.push(`<tr>
+      <td>${m}</td>
+      <td class="${gapCls}">${dot}${statusTxt}</td>
+      <td>${fmt(assetNow)}</td>
+      <td>${assetChg!==null?(assetChg>=0?'+':'-')+fmt(assetChg):'—'}</td>
+      <td>${tx?fmt(tx.inc):'—'}</td>
+      <td>${tx?fmt(tx.exp):'—'}</td>
+      <td>${netInc!==null?(netInc>=0?'+':'-')+fmt(netInc):'—'}</td>
+      <td class="${gapCls}">${gap!==null?(gap>=0?'+':'-')+fmt(gap):'—'}</td>
+    </tr>`);
+  });
+  tbody.innerHTML = rows.reverse().join(''); // newest first
+
+  // Update gap metric
+  const avgGap = gapCount ? totalGap/gapCount : null;
+  if (avgGap !== null) {
+    const latest = assetHistory[assetHistory.length-1];
+    const latestMonth = latest.month;
+    const latestTx = txMap[latestMonth]||{inc:0,exp:0};
+    const latestPrev = assetHistory.length>1?assetHistory[assetHistory.length-2].total:null;
+    const latestGap = latestPrev!==null ? (latest.total-latestPrev)-(latestTx.inc-latestTx.exp) : null;
+    if (latestGap !== null) {
+      document.getElementById('ah-gap').textContent = (latestGap>=0?'+':'-')+fmt(latestGap);
+      document.getElementById('ah-gap').className = 'metric-value '+(Math.abs(latestGap)<50000?'v-pos':Math.abs(latestGap)<300000?'':'v-neg');
+      document.getElementById('ah-gap-sub').textContent = latestMonth;
+    }
+  }
+}
+
+/* Drop event for asset history */
+document.addEventListener('DOMContentLoaded', () => {
+  const ahDz = document.getElementById('asset-hist-dropzone');
+  ahDz.ondragover = e=>{e.preventDefault();ahDz.classList.add('over');};
+  ahDz.ondragleave = ()=>ahDz.classList.remove('over');
+  ahDz.ondrop = e=>{e.preventDefault();ahDz.classList.remove('over');loadAssetHistFile(e.dataTransfer.files);};
+  document.getElementById('assethistfile').onchange = function(e){if(e.target.files.length)loadAssetHistFile(e.target.files);e.target.value='';};
+});
 
 /* ===== TAX ===== */
 
@@ -1350,6 +1599,74 @@ function applyExpenses() {
 }
 document.getElementById('exp-modal').onclick = e => { if(e.target===document.getElementById('exp-modal')) closeExpModal(); };
 
+/* 確定申告への自動連携 */
+function taxAutoFill() {
+  const year = document.getElementById('tx-year').value;
+  const all  = allCSV();
+  const rows = all.filter(r => r.month && r.month.startsWith(year));
+  const results = [];
+
+  if (!rows.length && !assetHistory.length) {
+    document.getElementById('tax-link-result').textContent = `${year}年のデータが見つかりません。先にCSVを取り込んでください。`;
+    return;
+  }
+
+  // 収入合計 → 事業売上 or 給与にセット
+  const incTotal = rows.filter(r=>r.type==='inc').reduce((s,r)=>s+r.amt,0);
+  if (incTotal > 0) {
+    const type = document.getElementById('tx-type').value;
+    if (type==='business'||type==='both') {
+      document.getElementById('tx-biz-income').value = Math.round(incTotal);
+      results.push(`事業売上: ${fmt(incTotal)}`);
+    } else {
+      document.getElementById('tx-salary').value = Math.round(incTotal);
+      results.push(`給与収入: ${fmt(incTotal)}`);
+    }
+  }
+
+  // 医療費
+  const medical = rows.filter(r=>r.type==='exp'&&/医療|病院|薬|歯科/i.test(r.cat)).reduce((s,r)=>s+Math.abs(r.amt),0);
+  if (medical > 0) {
+    document.getElementById('dc-medical').checked = true;
+    document.getElementById('dc-medical-total').value = Math.round(medical);
+    results.push(`医療費: ${fmt(medical)}`);
+  }
+
+  // ふるさと納税
+  const furusato = rows.filter(r=>r.type==='exp'&&/ふるさと|寄附|寄付/i.test(r.name+r.cat)).reduce((s,r)=>s+Math.abs(r.amt),0);
+  if (furusato > 0) {
+    document.getElementById('dc-furusato').checked = true;
+    document.getElementById('dc-furusato-amt').value = Math.round(furusato);
+    results.push(`寄附金（ふるさと納税）: ${fmt(furusato)}`);
+  }
+
+  // 資産推移から年初/年末の資産を参考表示
+  if (assetHistory.length) {
+    const yearData = assetHistory.filter(r=>r.month.startsWith(year));
+    if (yearData.length) {
+      const first = yearData[0], last = yearData[yearData.length-1];
+      const change = last.total - first.total;
+      results.push(`資産増減（${year}年）: ${(change>=0?'+':'-')+fmt(change)}`);
+    }
+  }
+
+  document.getElementById('tax-link-result').innerHTML =
+    results.length
+      ? '<div style="margin-top:8px;padding:8px 12px;background:var(--surface2);border-radius:var(--rs);line-height:2;">' +
+        results.map(r=>`✓ ${r}`).join('<br>') + '</div>'
+      : `${year}年の対象データが見つかりませんでした。`;
+  renderTaxResult();
+}
+
+// 年度変更時に連携ボタンの説明更新
+document.getElementById('tx-year').addEventListener('change', () => {
+  const yr = document.getElementById('tx-year').value;
+  const all = allCSV();
+  const cnt = all.filter(r=>r.month&&r.month.startsWith(yr)).length;
+  document.getElementById('tax-link-detail').textContent =
+    cnt > 0 ? `${yr}年: ${cnt}件の取引データあり` : `${yr}年のCSVデータなし`;
+});
+
 /* 扶養控除の表示切り替え */
 document.getElementById('dc-dep').addEventListener('change', () => {
   document.getElementById('dc-dep-detail').style.display = document.getElementById('dc-dep').checked ? '' : 'none';
@@ -1361,6 +1678,7 @@ loadStorage();
 renderManual();
 renderAssetRows();
 if (Object.keys(csvFileMap).length) { renderChips(); refreshCSV(); }
+if (assetHistory.length) renderAssetHistSummary();
 renderDashboard();
 </script>
 </body>
