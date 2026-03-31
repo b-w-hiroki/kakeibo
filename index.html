@@ -117,7 +117,7 @@ tr:hover td{background:var(--surface2);}
 
 /* MISC */
 .section-label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;}
-.note{font-size:12px;color:var(--text3);margin-bottom:1rem;padding:10px 14px;background:var(--surface2);border-radius:var(--rs);border-left:2px solid var(--border2);}
+.note{font-size:12px;color:var(--text3);margin-bottom:1rem;padding:4px 0 4px 12px;border-left:2px solid var(--border2);}
 .err{font-size:12px;color:var(--exp);margin-top:6px;}
 .chart-wrap{position:relative;width:100%;height:220px;}
 .chart-wrap-lg{position:relative;width:100%;height:260px;}
@@ -128,9 +128,9 @@ tr:hover td{background:var(--surface2);}
 .legend-dot{width:10px;height:10px;border-radius:2px;}
 
 /* BADGE */
-.badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:999px;}
-.badge-inc{background:var(--inc-dim);color:var(--inc);}
-.badge-exp{background:var(--exp-dim);color:var(--exp);}
+.badge{display:inline-block;font-size:12px;}
+.badge-inc{color:var(--inc);}
+.badge-exp{color:var(--exp);}
 
 /* ACTION BTN */
 .action-btn{background:none;border:.5px solid var(--border2);border-radius:var(--rs);color:var(--text2);cursor:pointer;padding:5px 14px;font-size:12px;font-family:inherit;transition:background .15s,color .15s;}
@@ -208,8 +208,8 @@ tr:hover td{background:var(--surface2);}
       </div>
       <div class="card" id="dash-no-asset-card">
         <div class="card-title">資産内訳</div>
-        <div style="font-size:12px;color:var(--text3);padding:6px 0;">資産CSVを取り込むと表示されます</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:4px;">マネーフォワードME → 資産 → CSVダウンロード</div>
+        <div style="font-size:12px;color:var(--text3);padding:6px 0;">口座残高を入力すると表示されます</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px;">「CSV取り込み」タブ → 口座・資産残高 から入力</div>
       </div>
     </div>
   </div>
@@ -224,12 +224,14 @@ tr:hover td{background:var(--surface2);}
     <input type="file" id="csvfile" accept=".csv" multiple style="display:none">
   </div>
   <div id="file-summary"></div>
-  <div class="drop-zone asset-zone" id="asset-dropzone" onclick="document.getElementById('assetfile').click()">
-    <div class="drop-title" style="color:var(--asset);">資産CSVをここにドロップ（任意）</div>
-    <div class="drop-sub">マネーフォワードME → 資産 → CSVダウンロード　/ 口座残高・資産内訳の表示に使用</div>
-    <input type="file" id="assetfile" accept=".csv" multiple style="display:none">
+  <div class="card" style="margin-bottom:1rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+      <div class="card-title" style="margin-bottom:0;color:var(--asset);">口座・資産残高（任意）</div>
+      <span style="font-size:11px;color:var(--text3);">ダッシュボードの資産内訳グラフに使用します</span>
+    </div>
+    <div id="asset-rows"></div>
+    <button class="add-btn" onclick="addAssetRow()">+ 口座を追加</button>
   </div>
-  <div id="asset-summary"></div>
   <div class="err" id="err-msg"></div>
 
   <div id="csv-summary" style="display:none">
@@ -315,8 +317,7 @@ tr:hover td{background:var(--surface2);}
     <div class="modal-body" style="padding:1.25rem 1.5rem;">
       <div style="font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.75rem;">収支CSV</div>
       <div id="fm-csv-list"></div>
-      <div style="font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin:1.25rem 0 .75rem;">資産CSV</div>
-      <div id="fm-asset-list"></div>
+      <div style="margin-top:1rem;font-size:11px;color:var(--text3);">※ 口座残高はCSV取り込みタブの「口座・資産残高」から手動で入力できます</div>
     </div>
   </div>
 </div>
@@ -353,7 +354,7 @@ tr:hover td{background:var(--surface2);}
 <script>
 /* STATE */
 let csvFileMap = {};
-let assetData = [];
+let manualAssets = [];
 let manualInc = [{id:1,name:'給与',amt:0},{id:2,name:'副業',amt:0}];
 let manualExp = [{id:10,name:'家賃',amt:0},{id:11,name:'食費',amt:0},{id:12,name:'光熱費',amt:0},{id:13,name:'交通費',amt:0}];
 let nextId = 20;
@@ -363,7 +364,7 @@ let csvChart = null, dashChart = null, csvLineChart = null, dashLineChart = null
 function saveStorage() {
   try {
     localStorage.setItem('kakeibo_csv', JSON.stringify(csvFileMap));
-    localStorage.setItem('kakeibo_asset', JSON.stringify(assetData));
+    localStorage.setItem('kakeibo_assets', JSON.stringify(manualAssets));
     localStorage.setItem('kakeibo_inc', JSON.stringify(manualInc));
     localStorage.setItem('kakeibo_exp', JSON.stringify(manualExp));
     localStorage.setItem('kakeibo_nextId', String(nextId));
@@ -373,8 +374,8 @@ function loadStorage() {
   try {
     const csv = localStorage.getItem('kakeibo_csv');
     if (csv) csvFileMap = JSON.parse(csv);
-    const asset = localStorage.getItem('kakeibo_asset');
-    if (asset) assetData = JSON.parse(asset);
+    const assets = localStorage.getItem('kakeibo_assets');
+    if (assets) manualAssets = JSON.parse(assets);
     const inc = localStorage.getItem('kakeibo_inc');
     if (inc) manualInc = JSON.parse(inc);
     const exp = localStorage.getItem('kakeibo_exp');
@@ -448,20 +449,34 @@ function processCSV(raw, filename) {
   }).filter(r=>r.amt!==0);
 }
 
-/* ASSET CSV PARSE */
-function processAssetCSV(raw) {
-  if (!raw.length) return null;
-  const keys = Object.keys(raw[0]);
-  const instKey = keys.find(k=>/金融機関|機関名/i.test(k));
-  const nameKey = keys.find(k=>/口座名|名称|名前/i.test(k));
-  const amtKey  = keys.find(k=>/残高|金額|評価額/i.test(k));
-  const dateKey = keys.find(k=>/更新日|取得日|日時/i.test(k));
-  if (!amtKey) return null;
-  return raw.map(r => {
-    const amtStr = (r[amtKey]||'').replace(/,/g,'').replace(/円/g,'').trim();
-    const amt = parseFloat(amtStr)||0;
-    return { inst: instKey?r[instKey]:'', name: nameKey?r[nameKey]:'', amt, date: dateKey?r[dateKey]:'' };
-  }).filter(r=>r.amt>0);
+/* MANUAL ASSETS */
+function renderAssetRows() {
+  const container = document.getElementById('asset-rows');
+  if (!container) return;
+  container.innerHTML = '';
+  manualAssets.forEach(row => {
+    const div = document.createElement('div');
+    div.className = 'entry-row';
+    div.innerHTML = `
+      <input type="text" placeholder="口座名・金融機関名" value="${row.name}" oninput="updAssetRow(${row.id},'name',this.value)">
+      <input type="number" class="amt-in" placeholder="残高（円）" value="${row.amt||''}" min="0" oninput="updAssetRow(${row.id},'amt',this.value)">
+      <button class="del-btn" onclick="delAssetRow(${row.id})">×</button>`;
+    container.appendChild(div);
+  });
+}
+function addAssetRow() {
+  manualAssets.push({id: nextId++, name: '', amt: 0});
+  saveStorage(); renderAssetRows();
+}
+function delAssetRow(id) {
+  manualAssets = manualAssets.filter(r => r.id !== id);
+  saveStorage(); renderAssetRows();
+}
+function updAssetRow(id, field, val) {
+  const row = manualAssets.find(r => r.id === id);
+  if (!row) return;
+  row[field] = field === 'amt' ? (parseFloat(val)||0) : val;
+  saveStorage();
 }
 
 /* CSV LOAD */
@@ -482,28 +497,6 @@ function loadFiles(files) {
   });
 }
 
-function loadAssetFiles(files) {
-  Array.from(files).forEach(file => {
-    const reader = new FileReader();
-    reader.onload = ev => {
-      const text = new TextDecoder('shift_jis').decode(ev.target.result);
-      const raw = parseCSV(text);
-      const rows = processAssetCSV(raw);
-      if (rows && rows.length) {
-        rows.forEach(r => {
-          const key = r.inst+'|'+r.name;
-          const idx = assetData.findIndex(a=>a.inst+'|'+a.name===key);
-          if (idx>=0) assetData[idx]=r; else assetData.push(r);
-        });
-        saveStorage();
-        renderAssetChips();
-        updateMeta();
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  });
-}
-
 function renderChips() {
   const names = Object.keys(csvFileMap);
   const el = document.getElementById('file-summary');
@@ -513,18 +506,6 @@ function renderChips() {
     <div class="file-summary-bar">
       <span class="file-summary-icon">📂</span>
       <span class="file-summary-text"><strong>${names.length}件</strong>のCSV読み込み済み（${months.length}ヶ月分）</span>
-      <button class="action-btn" onclick="openFileModal()">ファイルを管理</button>
-    </div>`;
-}
-
-function renderAssetChips() {
-  const el = document.getElementById('asset-summary');
-  if (!assetData.length) { el.innerHTML=''; return; }
-  const total = assetData.reduce((s,r)=>s+r.amt,0);
-  el.innerHTML = `
-    <div class="file-summary-bar asset">
-      <span class="file-summary-icon">🏦</span>
-      <span class="file-summary-text"><strong>${assetData.length}口座</strong>の資産データ読み込み済み（合計 ${fmt(total)}）</span>
       <button class="action-btn" onclick="openFileModal()">ファイルを管理</button>
     </div>`;
 }
@@ -539,17 +520,10 @@ function openFileModal() {
           <button class="del-btn" onclick="removeFile('${n.replace(/'/g,"\\'")}')">×</button>
         </div>`).join('')
     : '<div class="fm-empty">ファイルなし</div>';
-  document.getElementById('fm-asset-list').innerHTML = assetData.length
-    ? `<div class="fm-row">
-        <span class="fm-name">${assetData.length}口座のデータ（合計 ${fmt(assetData.reduce((s,r)=>s+r.amt,0))}）</span>
-        <button class="del-btn" onclick="clearAsset();openFileModal();">×</button>
-       </div>`
-    : '<div class="fm-empty">ファイルなし</div>';
   document.getElementById('file-modal').classList.add('open');
 }
 function closeFileModal() { document.getElementById('file-modal').classList.remove('open'); }
 
-function clearAsset() { assetData=[]; saveStorage(); renderAssetChips(); updateMeta(); }
 function removeFile(name) {
   delete csvFileMap[name]; saveStorage(); renderChips(); refreshCSV();
   if (document.getElementById('file-modal').classList.contains('open')) openFileModal();
@@ -667,7 +641,7 @@ const paletteAsset = ['#38bdf8','#818cf8','#4ade80','#fb923c','#e879f9','#fbbf24
 function renderAssetChart(assets) {
   if (assetChart) assetChart.destroy();
   const map = {};
-  assets.forEach(a=>{ const k=a.inst||a.name; map[k]=(map[k]||0)+a.amt; });
+  assets.forEach(a=>{ const k=a.name||'未設定'; map[k]=(map[k]||0)+a.amt; });
   const entries = Object.entries(map).sort((a,b)=>b[1]-a[1]);
   const total = assets.reduce((s,a)=>s+a.amt,0)||1;
   assetChart = new Chart(document.getElementById('dash-asset-chart').getContext('2d'), {
@@ -848,10 +822,11 @@ function renderDashboard() {
     dashLineChart= renderLineChart('dash-line-chart', sortedMonths.map(m=>m.slice(5)), mi.map((v,i)=>v-me[i]), dashLineChart);
   }
   renderCatBars('dash-cat-bars', csvRows);
-  const hasAsset = assetData.length>0;
+  const validAssets = manualAssets.filter(r=>r.amt>0);
+  const hasAsset = validAssets.length > 0;
   document.getElementById('dash-asset-card').style.display    = hasAsset?'block':'none';
   document.getElementById('dash-no-asset-card').style.display = hasAsset?'none':'block';
-  if (hasAsset) renderAssetChart(assetData);
+  if (hasAsset) renderAssetChart(validAssets);
 }
 
 /* META */
@@ -859,7 +834,7 @@ function updateMeta() {
   const all=allCSV();
   if (!all.length) { document.getElementById('header-meta').textContent='データなし'; return; }
   const months=[...new Set(all.map(r=>r.month).filter(Boolean))].sort();
-  const assetTotal = assetData.reduce((s,a)=>s+a.amt,0);
+  const assetTotal = manualAssets.reduce((s,a)=>s+(a.amt||0),0);
   let meta = `${months[0]} 〜 ${months[months.length-1]}　${all.length.toLocaleString()}件`;
   if (assetTotal) meta += `　/ 資産 ${fmt(assetTotal)}`;
   document.getElementById('header-meta').textContent = meta;
@@ -872,20 +847,14 @@ dz.ondragover=e=>{e.preventDefault();dz.classList.add('over');};
 dz.ondragleave=()=>dz.classList.remove('over');
 dz.ondrop=e=>{e.preventDefault();dz.classList.remove('over');loadFiles(e.dataTransfer.files);};
 
-document.getElementById('assetfile').onchange=function(e){if(e.target.files.length)loadAssetFiles(e.target.files);e.target.value='';};
-const adz=document.getElementById('asset-dropzone');
-adz.ondragover=e=>{e.preventDefault();adz.classList.add('over');};
-adz.ondragleave=()=>adz.classList.remove('over');
-adz.ondrop=e=>{e.preventDefault();adz.classList.remove('over');loadAssetFiles(e.dataTransfer.files);};
-
 document.getElementById('cf-month').onchange=applyCSVFilter;
 document.getElementById('cf-type').onchange=applyCSVFilter;
 
 /* INIT */
 loadStorage();
 renderManual();
+renderAssetRows();
 if (Object.keys(csvFileMap).length) { renderChips(); refreshCSV(); }
-if (assetData.length) renderAssetChips();
 renderDashboard();
 </script>
 </body>
