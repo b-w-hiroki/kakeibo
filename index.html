@@ -136,6 +136,47 @@ tr:hover td{background:var(--surface2);}
 .action-btn{background:none;border:.5px solid var(--border2);border-radius:var(--rs);color:var(--text2);cursor:pointer;padding:5px 14px;font-size:12px;font-family:inherit;transition:background .15s,color .15s;}
 .action-btn:hover{background:var(--accent-dim);color:var(--accent);}
 
+/* TAX */
+.tax-section{margin-bottom:1.5rem;}
+.tax-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap;}
+.tax-label{font-size:13px;color:var(--text2);min-width:180px;flex-shrink:0;}
+.tax-input{width:160px;}
+.tax-unit{font-size:12px;color:var(--text3);}
+.tax-note{font-size:11px;color:var(--text3);margin-top:2px;}
+.tax-auto{font-size:12px;color:var(--accent);font-family:'DM Mono',monospace;}
+.deduction-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;}
+@media(max-width:600px){.deduction-grid{grid-template-columns:1fr;}.tax-label{min-width:140px;}}
+.deduction-item{display:flex;align-items:center;gap:8px;}
+.deduction-item input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;}
+.deduction-item label{font-size:13px;color:var(--text2);cursor:pointer;flex:1;}
+.deduction-item .tax-input{width:120px;}
+.result-table{width:100%;border-collapse:collapse;margin-top:8px;}
+.result-table tr td{padding:8px 12px;border-bottom:.5px solid var(--border);font-size:13px;}
+.result-table tr td:first-child{color:var(--text2);width:55%;}
+.result-table tr td:last-child{font-family:'DM Mono',monospace;text-align:right;color:var(--text);}
+.result-table .total-row td{font-size:15px;font-weight:500;border-top:1px solid var(--border2);border-bottom:none;padding-top:12px;}
+.result-table .sub-row td{color:var(--text3);font-size:12px;}
+.result-table .highlight td:last-child{color:var(--exp);font-size:18px;}
+.result-table .positive td:last-child{color:var(--inc);}
+.exp-check-item{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:.5px solid var(--border);}
+.exp-check-item:last-child{border-bottom:none;}
+.exp-check-item input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;}
+.exp-check-item label{font-size:13px;color:var(--text2);flex:1;}
+.exp-check-amt{font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);min-width:100px;text-align:right;}
+.tax-badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:999px;background:rgba(232,213,176,.12);color:var(--accent);margin-left:6px;}
+.print-btn{background:var(--surface2);border:.5px solid var(--border2);border-radius:var(--rs);color:var(--text2);cursor:pointer;padding:8px 20px;font-size:13px;font-family:inherit;transition:background .15s;}
+.print-btn:hover{background:var(--accent-dim);color:var(--accent);}
+@media print{
+  header,.tab-bar,.no-print{display:none!important;}
+  body{background:#fff;color:#111;}
+  .panel.active{padding:0;}
+  .card{background:#fff;border:1px solid #ddd;box-shadow:none;margin-bottom:12px;}
+  .card-title{color:#555;}
+  .metric-value{color:#111!important;}
+  .result-table tr td{color:#111!important;border-color:#ddd;}
+  .result-table tr td:first-child{color:#555!important;}
+}
+
 /* MODAL */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
 .modal-bg.open{display:flex;}
@@ -158,6 +199,7 @@ tr:hover td{background:var(--surface2);}
   <button class="tab active" onclick="switchTab('dashboard')">ダッシュボード</button>
   <button class="tab" onclick="switchTab('csv')">CSV取り込み</button>
   <button class="tab" onclick="switchTab('manual')">手動入力</button>
+  <button class="tab" onclick="switchTab('tax')">確定申告</button>
 </div>
 
 <!-- DASHBOARD TAB -->
@@ -307,6 +349,235 @@ tr:hover td{background:var(--surface2);}
   </div>
 </div>
 
+<!-- TAX TAB -->
+<div class="panel" id="tab-tax">
+  <div class="note no-print" style="margin-bottom:1.5rem;">この試算は参考値です。実際の申告は e-Tax または税務署窓口でご確認ください。</div>
+
+  <!-- 年度・申告種類 -->
+  <div class="card tax-section">
+    <div class="card-title">申告情報</div>
+    <div class="tax-row">
+      <span class="tax-label">申告年度</span>
+      <select id="tx-year" style="width:120px;" onchange="renderTaxResult()">
+        <option value="2024">2024年（令和6年）分</option>
+        <option value="2023">2023年（令和5年）分</option>
+      </select>
+    </div>
+    <div class="tax-row">
+      <span class="tax-label">申告の種類</span>
+      <select id="tx-type" style="width:200px;" onchange="onTaxTypeChange()">
+        <option value="salary">給与所得（会社員・副業あり）</option>
+        <option value="business">事業所得（フリーランス・個人事業主）</option>
+        <option value="both">給与 + 事業所得（複合）</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- 所得の入力 -->
+  <div class="card tax-section">
+    <div class="card-title">所得の入力</div>
+
+    <!-- 給与 -->
+    <div id="tx-salary-section">
+      <div style="font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;">給与所得</div>
+      <div class="tax-row">
+        <span class="tax-label">給与収入（年収）</span>
+        <input type="number" id="tx-salary" class="tax-input" placeholder="例: 5000000" min="0" oninput="renderTaxResult()">
+        <span class="tax-unit">円</span>
+      </div>
+      <div class="tax-row" style="margin-top:-4px;">
+        <span class="tax-label" style="font-size:11px;color:var(--text3);">　→ 給与所得控除（自動）</span>
+        <span class="tax-auto" id="tx-salary-deduction">—</span>
+        <span class="tax-unit">円</span>
+      </div>
+      <div class="tax-row">
+        <span class="tax-label">源泉徴収税額（既納付）</span>
+        <input type="number" id="tx-withholding" class="tax-input" placeholder="源泉徴収票より" min="0" oninput="renderTaxResult()">
+        <span class="tax-unit">円</span>
+      </div>
+    </div>
+
+    <!-- 事業所得 -->
+    <div id="tx-biz-section" style="display:none;margin-top:1rem;">
+      <div style="font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;border-top:.5px solid var(--border);padding-top:1rem;">事業所得</div>
+      <div class="tax-row">
+        <span class="tax-label">事業売上（年間）</span>
+        <input type="number" id="tx-biz-income" class="tax-input" placeholder="例: 3000000" min="0" oninput="renderTaxResult()">
+        <span class="tax-unit">円</span>
+        <button class="action-btn no-print" onclick="importBizFromCSV()" style="margin-left:4px;">CSVから収入を取得</button>
+      </div>
+      <div class="tax-row">
+        <span class="tax-label">事業経費（年間合計）</span>
+        <input type="number" id="tx-biz-exp" class="tax-input" placeholder="例: 800000" min="0" oninput="renderTaxResult()">
+        <span class="tax-unit">円</span>
+        <button class="action-btn no-print" onclick="openExpModal()" style="margin-left:4px;">CSVから経費を選択</button>
+      </div>
+      <div class="tax-row">
+        <span class="tax-label">青色申告特別控除</span>
+        <select id="tx-aoki" style="width:200px;" onchange="renderTaxResult()">
+          <option value="0">なし（白色申告）</option>
+          <option value="100000">10万円（簡易帳簿）</option>
+          <option value="550000">55万円（複式帳簿）</option>
+          <option value="650000">65万円（電子申告）</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- 雑所得 -->
+    <div style="margin-top:1rem;border-top:.5px solid var(--border);padding-top:1rem;">
+      <div style="font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;">雑所得（副業・年金など）</div>
+      <div class="tax-row">
+        <span class="tax-label">雑収入</span>
+        <input type="number" id="tx-misc-income" class="tax-input" placeholder="0" min="0" oninput="renderTaxResult()">
+        <span class="tax-unit">円</span>
+      </div>
+      <div class="tax-row">
+        <span class="tax-label">雑所得に対する経費</span>
+        <input type="number" id="tx-misc-exp" class="tax-input" placeholder="0" min="0" oninput="renderTaxResult()">
+        <span class="tax-unit">円</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 控除 -->
+  <div class="card tax-section">
+    <div class="card-title">所得控除</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:1rem;">該当するものにチェックを入れ、金額を入力してください。</div>
+    <div class="deduction-grid">
+      <!-- 基礎控除 -->
+      <div>
+        <div class="deduction-item">
+          <input type="checkbox" id="dc-basic" checked disabled>
+          <label for="dc-basic">基礎控除 <span class="tax-badge">自動</span></label>
+          <span class="tax-auto" style="font-size:12px;">¥480,000</span>
+        </div>
+      </div>
+      <!-- 配偶者控除 -->
+      <div>
+        <div class="deduction-item">
+          <input type="checkbox" id="dc-spouse" onchange="renderTaxResult()">
+          <label for="dc-spouse">配偶者控除</label>
+          <select id="dc-spouse-amt" style="width:110px;font-size:12px;" onchange="renderTaxResult()">
+            <option value="380000">38万円（一般）</option>
+            <option value="260000">26万円（老人）</option>
+          </select>
+        </div>
+      </div>
+      <!-- 扶養控除 -->
+      <div>
+        <div class="deduction-item">
+          <input type="checkbox" id="dc-dep" onchange="renderTaxResult()">
+          <label for="dc-dep">扶養控除</label>
+        </div>
+        <div class="tax-row" style="margin-top:4px;margin-left:22px;" id="dc-dep-detail" style="display:none">
+          <span style="font-size:12px;color:var(--text3);">一般扶養</span>
+          <input type="number" id="dc-dep-n" class="tax-input" style="width:60px;" value="0" min="0" max="10" oninput="renderTaxResult()">
+          <span class="tax-unit">人 × 38万</span>
+        </div>
+      </div>
+      <!-- 社会保険料控除 -->
+      <div>
+        <div class="deduction-item">
+          <input type="checkbox" id="dc-social" onchange="renderTaxResult()">
+          <label for="dc-social">社会保険料控除</label>
+          <input type="number" id="dc-social-amt" class="tax-input" placeholder="年間合計" min="0" oninput="renderTaxResult()">
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-left:22px;margin-top:2px;">健康保険・厚生年金・雇用保険など</div>
+      </div>
+      <!-- 生命保険料控除 -->
+      <div>
+        <div class="deduction-item">
+          <input type="checkbox" id="dc-life" onchange="renderTaxResult()">
+          <label for="dc-life">生命保険料控除</label>
+          <input type="number" id="dc-life-amt" class="tax-input" placeholder="支払額" min="0" oninput="renderTaxResult()">
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-left:22px;margin-top:2px;">最大12万円（一般・介護・個人年金合算）</div>
+      </div>
+      <!-- 地震保険料控除 -->
+      <div>
+        <div class="deduction-item">
+          <input type="checkbox" id="dc-earthquake" onchange="renderTaxResult()">
+          <label for="dc-earthquake">地震保険料控除</label>
+          <input type="number" id="dc-earthquake-amt" class="tax-input" placeholder="支払額" min="0" oninput="renderTaxResult()">
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-left:22px;margin-top:2px;">最大5万円</div>
+      </div>
+      <!-- 医療費控除 -->
+      <div>
+        <div class="deduction-item">
+          <input type="checkbox" id="dc-medical" onchange="renderTaxResult()">
+          <label for="dc-medical">医療費控除</label>
+        </div>
+        <div style="margin-left:22px;margin-top:4px;" id="dc-medical-detail">
+          <div class="tax-row">
+            <span style="font-size:12px;color:var(--text3);min-width:80px;">医療費合計</span>
+            <input type="number" id="dc-medical-total" class="tax-input" style="width:120px;" placeholder="年間合計" min="0" oninput="renderTaxResult()">
+            <button class="action-btn no-print" style="font-size:11px;" onclick="importMedicalFromCSV()">CSVから取得</button>
+          </div>
+        </div>
+      </div>
+      <!-- iDeCo -->
+      <div>
+        <div class="deduction-item">
+          <input type="checkbox" id="dc-ideco" onchange="renderTaxResult()">
+          <label for="dc-ideco">小規模企業共済等控除（iDeCoなど）</label>
+          <input type="number" id="dc-ideco-amt" class="tax-input" placeholder="掛金年額" min="0" oninput="renderTaxResult()">
+        </div>
+      </div>
+      <!-- ふるさと納税 -->
+      <div>
+        <div class="deduction-item">
+          <input type="checkbox" id="dc-furusato" onchange="renderTaxResult()">
+          <label for="dc-furusato">寄附金控除（ふるさと納税など）</label>
+          <input type="number" id="dc-furusato-amt" class="tax-input" placeholder="寄附金合計" min="0" oninput="renderTaxResult()">
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-left:22px;margin-top:2px;">控除額 = 寄附金 − 2,000円</div>
+      </div>
+      <!-- 住宅ローン控除 -->
+      <div>
+        <div class="deduction-item">
+          <input type="checkbox" id="dc-housing" onchange="renderTaxResult()">
+          <label for="dc-housing">住宅借入金等特別控除（住宅ローン）</label>
+          <input type="number" id="dc-housing-amt" class="tax-input" placeholder="控除額" min="0" oninput="renderTaxResult()">
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-left:22px;margin-top:2px;">税額控除（源泉徴収票または住宅ローン控除証明書に記載）</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 試算結果 -->
+  <div class="card tax-section" id="tax-result-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;" class="no-print">
+      <div class="card-title" style="margin-bottom:0;">試算結果</div>
+      <button class="print-btn" onclick="window.print()">🖨 印刷 / PDF保存</button>
+    </div>
+    <div class="card-title" style="display:none;" id="print-title">確定申告 試算結果</div>
+    <table class="result-table" id="tax-result-table">
+      <tbody id="tax-result-body">
+        <tr><td colspan="2" style="color:var(--text3);font-size:12px;text-align:center;padding:2rem 0;">上の項目を入力すると試算結果が表示されます</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL: 経費選択 -->
+<div class="modal-bg" id="exp-modal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-head">
+      <div class="modal-title">CSVから経費を選択</div>
+      <button class="modal-close" onclick="closeExpModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:1rem;">CSVデータのカテゴリ別支出から、事業経費として算入する項目を選択してください。</div>
+      <div id="exp-modal-list"></div>
+      <div style="margin-top:1rem;display:flex;justify-content:space-between;align-items:center;" class="no-print">
+        <span style="font-size:13px;color:var(--text2);">選択合計：<span class="tax-auto" id="exp-modal-total">¥0</span></span>
+        <button class="action-btn" onclick="applyExpenses()">この金額を経費として適用</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: ファイル管理 -->
 <div class="modal-bg" id="file-modal">
   <div class="modal" style="max-width:540px;">
@@ -391,7 +662,7 @@ const fmtSgn = n => (n >= 0 ? '+' : '-') + fmt(n);
 
 /* TABS */
 function switchTab(id) {
-  ['dashboard','csv','manual'].forEach((t,i) => document.querySelectorAll('.tab')[i].classList.toggle('active', t===id));
+  ['dashboard','csv','manual','tax'].forEach((t,i) => document.querySelectorAll('.tab')[i].classList.toggle('active', t===id));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.getElementById('tab-'+id).classList.add('active');
   if (id === 'dashboard') renderDashboard();
@@ -703,7 +974,7 @@ function applyModalFilter() {
 }
 document.getElementById('all-modal').onclick  = e => { if(e.target===document.getElementById('all-modal'))  closeAllModal(); };
 document.getElementById('file-modal').onclick = e => { if(e.target===document.getElementById('file-modal')) closeFileModal(); };
-document.addEventListener('keydown', e => { if(e.key==='Escape'){ closeAllModal(); closeFileModal(); } });
+document.addEventListener('keydown', e => { if(e.key==='Escape'){ closeAllModal(); closeFileModal(); closeExpModal(); } });
 ['mf-month','mf-type','mf-cat'].forEach(id=>document.getElementById(id).onchange=applyModalFilter);
 
 /* MANUAL */
@@ -849,6 +1120,241 @@ dz.ondrop=e=>{e.preventDefault();dz.classList.remove('over');loadFiles(e.dataTra
 
 document.getElementById('cf-month').onchange=applyCSVFilter;
 document.getElementById('cf-type').onchange=applyCSVFilter;
+
+/* ===== TAX ===== */
+
+/* 給与所得控除（2020年〜） */
+function calcSalaryDeduction(income) {
+  if (income <= 1625000)  return 550000;
+  if (income <= 1800000)  return Math.floor(income * 0.4) - 100000;
+  if (income <= 3600000)  return Math.floor(income * 0.3) + 80000;
+  if (income <= 6600000)  return Math.floor(income * 0.2) + 440000;
+  if (income <= 8500000)  return Math.floor(income * 0.1) + 1100000;
+  return 1950000;
+}
+
+/* 生命保険料控除（2012年以降新制度・簡易計算） */
+function calcLifeDeduction(premium) {
+  if (premium <= 20000)  return premium;
+  if (premium <= 40000)  return Math.floor(premium / 2) + 10000;
+  if (premium <= 80000)  return Math.floor(premium / 4) + 20000;
+  return 40000;
+}
+
+/* 地震保険料控除 */
+function calcEarthquakeDeduction(premium) {
+  return Math.min(premium, 50000);
+}
+
+/* 所得税の計算（課税所得 → 税額） */
+function calcIncomeTax(taxableIncome) {
+  if (taxableIncome <= 0) return 0;
+  const brackets = [
+    [1950000, 0.05, 0],
+    [3300000, 0.10, 97500],
+    [6950000, 0.20, 427500],
+    [9000000, 0.23, 636000],
+    [18000000,0.33, 1536000],
+    [40000000,0.40, 2796000],
+    [Infinity, 0.45, 4796000],
+  ];
+  for (const [limit, rate, deduct] of brackets) {
+    if (taxableIncome <= limit) return Math.floor(taxableIncome * rate - deduct);
+  }
+  return 0;
+}
+
+function onTaxTypeChange() {
+  const t = document.getElementById('tx-type').value;
+  document.getElementById('tx-salary-section').style.display = (t==='salary'||t==='both') ? '' : 'none';
+  document.getElementById('tx-biz-section').style.display   = (t==='business'||t==='both') ? '' : 'none';
+  renderTaxResult();
+}
+
+function getNum(id) { return parseFloat(document.getElementById(id)?.value)||0; }
+function getChk(id) { return document.getElementById(id)?.checked||false; }
+
+function renderTaxResult() {
+  const type = document.getElementById('tx-type').value;
+
+  /* 所得計算 */
+  const salaryIncome = getNum('tx-salary');
+  const salaryDeduction = (type==='salary'||type==='both') ? calcSalaryDeduction(salaryIncome) : 0;
+  const salaryKingaku = Math.max(0, salaryIncome - salaryDeduction);
+  if (document.getElementById('tx-salary-deduction'))
+    document.getElementById('tx-salary-deduction').textContent =
+      (type==='salary'||type==='both') && salaryIncome > 0 ? '▲ ' + salaryDeduction.toLocaleString() : '—';
+
+  const bizIncome = getNum('tx-biz-income');
+  const bizExp    = getNum('tx-biz-exp');
+  const aoki      = parseInt(document.getElementById('tx-aoki')?.value||0);
+  const bizKingaku = (type==='business'||type==='both') ? Math.max(0, bizIncome - bizExp - aoki) : 0;
+
+  const miscIncome = getNum('tx-misc-income');
+  const miscExp    = getNum('tx-misc-exp');
+  const miscKingaku = Math.max(0, miscIncome - miscExp);
+
+  const totalIncome = salaryKingaku + bizKingaku + miscKingaku;
+
+  /* 所得控除 */
+  const basic    = 480000;
+  const spouse   = getChk('dc-spouse') ? getNum('dc-spouse-amt') : 0;
+  const depN     = getChk('dc-dep') ? (getNum('dc-dep-n')||0) : 0;
+  const dep      = depN * 380000;
+  const social   = getChk('dc-social') ? getNum('dc-social-amt') : 0;
+  const lifePrem = getChk('dc-life') ? getNum('dc-life-amt') : 0;
+  const life     = lifePrem > 0 ? Math.min(calcLifeDeduction(lifePrem) * 3, 120000) : 0;
+  const earthquake = getChk('dc-earthquake') ? calcEarthquakeDeduction(getNum('dc-earthquake-amt')) : 0;
+  const medTotal = getChk('dc-medical') ? getNum('dc-medical-total') : 0;
+  const medical  = Math.max(0, medTotal - Math.max(totalIncome * 0.05, 100000));
+  const ideco    = getChk('dc-ideco') ? getNum('dc-ideco-amt') : 0;
+  const furusato = getChk('dc-furusato') ? Math.max(0, getNum('dc-furusato-amt') - 2000) : 0;
+
+  const totalDeduction = basic + spouse + dep + social + life + earthquake + medical + ideco + furusato;
+  const taxableIncome  = Math.max(0, totalIncome - totalDeduction);
+
+  /* 税額 */
+  const incomeTax    = calcIncomeTax(taxableIncome);
+  const housingCredit= getChk('dc-housing') ? getNum('dc-housing-amt') : 0;
+  const taxAfterHousing = Math.max(0, incomeTax - housingCredit);
+  const fukko        = Math.floor(taxAfterHousing * 0.021);
+  const totalTax     = taxAfterHousing + fukko;
+  const withholding  = getNum('tx-withholding');
+  const balance      = totalTax - withholding;
+
+  /* 結果テーブル */
+  const rows = [];
+  const r = (label, val, cls='', unit='円') =>
+    `<tr class="${cls}"><td>${label}</td><td>${typeof val==='number'? (val<0?'▲ ':'') + Math.abs(val).toLocaleString() + ' '+unit : val}</td></tr>`;
+
+  rows.push('<tr><td colspan="2" style="font-size:10px;color:var(--text3);letter-spacing:.08em;padding-top:0;padding-bottom:4px;">▍ 所得</td></tr>');
+  if (type==='salary'||type==='both') {
+    rows.push(r('給与収入', salaryIncome));
+    rows.push(r('　給与所得控除', -salaryDeduction, 'sub-row'));
+    rows.push(r('　給与所得', salaryKingaku, 'sub-row'));
+  }
+  if (type==='business'||type==='both') {
+    rows.push(r('事業売上', bizIncome));
+    rows.push(r('　事業経費', -bizExp, 'sub-row'));
+    if (aoki>0) rows.push(r('　青色申告特別控除', -aoki, 'sub-row'));
+    rows.push(r('　事業所得', bizKingaku, 'sub-row'));
+  }
+  if (miscKingaku > 0) rows.push(r('雑所得', miscKingaku));
+  rows.push(r('所得合計', totalIncome, 'total-row'));
+
+  rows.push('<tr><td colspan="2" style="font-size:10px;color:var(--text3);letter-spacing:.08em;padding-top:12px;padding-bottom:4px;">▍ 所得控除</td></tr>');
+  rows.push(r('基礎控除', -basic, 'sub-row'));
+  if (spouse>0)    rows.push(r('配偶者控除', -spouse, 'sub-row'));
+  if (dep>0)       rows.push(r(`扶養控除（${depN}人）`, -dep, 'sub-row'));
+  if (social>0)    rows.push(r('社会保険料控除', -social, 'sub-row'));
+  if (life>0)      rows.push(r('生命保険料控除', -life, 'sub-row'));
+  if (earthquake>0)rows.push(r('地震保険料控除', -earthquake, 'sub-row'));
+  if (medical>0)   rows.push(r('医療費控除', -medical, 'sub-row'));
+  if (ideco>0)     rows.push(r('小規模企業共済等控除', -ideco, 'sub-row'));
+  if (furusato>0)  rows.push(r('寄附金控除（ふるさと納税）', -furusato, 'sub-row'));
+  rows.push(r('所得控除合計', -totalDeduction, 'total-row'));
+  rows.push(r('課税所得', taxableIncome, 'total-row'));
+
+  rows.push('<tr><td colspan="2" style="font-size:10px;color:var(--text3);letter-spacing:.08em;padding-top:12px;padding-bottom:4px;">▍ 税額</td></tr>');
+  rows.push(r('所得税（申告税額）', incomeTax));
+  if (housingCredit>0) rows.push(r('　住宅ローン控除', -housingCredit, 'sub-row'));
+  rows.push(r('復興特別所得税（2.1%）', fukko, 'sub-row'));
+  rows.push(r('所得税・復興税 合計', totalTax, 'total-row'));
+
+  if (withholding > 0) {
+    rows.push(r('源泉徴収税額（既納付）', -withholding, 'sub-row'));
+    const cls = balance > 0 ? 'highlight' : 'positive';
+    const label = balance > 0 ? '【納付額】' : '【還付見込み額】';
+    rows.push(r(label, Math.abs(balance), cls));
+  }
+
+  document.getElementById('tax-result-body').innerHTML = rows.join('');
+}
+
+/* CSVから収入インポート */
+function importBizFromCSV() {
+  const all = allCSV();
+  const year = document.getElementById('tx-year').value;
+  const inc = all.filter(r => r.type==='inc' && r.month && r.month.startsWith(year))
+                 .reduce((s,r) => s+r.amt, 0);
+  if (inc > 0) {
+    document.getElementById('tx-biz-income').value = Math.round(inc);
+    renderTaxResult();
+  } else {
+    alert(`${year}年の収入データがCSVに見つかりませんでした。`);
+  }
+}
+
+/* CSVから医療費インポート */
+function importMedicalFromCSV() {
+  const all = allCSV();
+  const year = document.getElementById('tx-year').value;
+  const medical = all.filter(r => r.type==='exp' && r.cat && /医療|病院|薬|歯科/i.test(r.cat) && r.month && r.month.startsWith(year))
+                     .reduce((s,r) => s+Math.abs(r.amt), 0);
+  if (medical > 0) {
+    document.getElementById('dc-medical-total').value = Math.round(medical);
+    document.getElementById('dc-medical').checked = true;
+    renderTaxResult();
+  } else {
+    alert(`${year}年の医療費カテゴリが見つかりませんでした（カテゴリ名に「医療・病院・薬・歯科」が含まれるものを検索）。`);
+  }
+}
+
+/* 経費選択モーダル */
+function openExpModal() {
+  const all = allCSV();
+  const year = document.getElementById('tx-year').value;
+  const rows = all.filter(r => r.type==='exp' && r.month && r.month.startsWith(year));
+  if (!rows.length) { alert('CSVデータがありません。先にCSVを取り込んでください。'); return; }
+  const catMap = {};
+  rows.forEach(r => { catMap[r.cat] = (catMap[r.cat]||0) + Math.abs(r.amt); });
+  const entries = Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('exp-modal-list').innerHTML = entries.map(([cat, amt])=>`
+    <div class="exp-check-item">
+      <input type="checkbox" id="ec-${cat}" onchange="calcExpTotal()">
+      <label for="ec-${cat}">${cat}</label>
+      <span class="exp-check-amt">${fmt(amt)}</span>
+      <span style="font-size:10px;color:var(--text3);min-width:50px;text-align:right;" data-amt="${amt}"></span>
+    </div>`).join('');
+  document.getElementById('exp-modal-total').textContent = '¥0';
+  document.getElementById('exp-modal').classList.add('open');
+}
+function closeExpModal() { document.getElementById('exp-modal').classList.remove('open'); }
+function calcExpTotal() {
+  const all = allCSV();
+  const year = document.getElementById('tx-year').value;
+  const rows = all.filter(r => r.type==='exp' && r.month && r.month.startsWith(year));
+  const catMap = {};
+  rows.forEach(r => { catMap[r.cat] = (catMap[r.cat]||0) + Math.abs(r.amt); });
+  let total = 0;
+  Object.keys(catMap).forEach(cat => {
+    const cb = document.getElementById('ec-'+cat);
+    if (cb && cb.checked) total += catMap[cat];
+  });
+  document.getElementById('exp-modal-total').textContent = fmt(total);
+}
+function applyExpenses() {
+  const all = allCSV();
+  const year = document.getElementById('tx-year').value;
+  const rows = all.filter(r => r.type==='exp' && r.month && r.month.startsWith(year));
+  const catMap = {};
+  rows.forEach(r => { catMap[r.cat] = (catMap[r.cat]||0) + Math.abs(r.amt); });
+  let total = 0;
+  Object.keys(catMap).forEach(cat => {
+    const cb = document.getElementById('ec-'+cat);
+    if (cb && cb.checked) total += catMap[cat];
+  });
+  document.getElementById('tx-biz-exp').value = Math.round(total);
+  closeExpModal();
+  renderTaxResult();
+}
+document.getElementById('exp-modal').onclick = e => { if(e.target===document.getElementById('exp-modal')) closeExpModal(); };
+
+/* 扶養控除の表示切り替え */
+document.getElementById('dc-dep').addEventListener('change', () => {
+  document.getElementById('dc-dep-detail').style.display = document.getElementById('dc-dep').checked ? '' : 'none';
+  renderTaxResult();
+});
 
 /* INIT */
 loadStorage();
