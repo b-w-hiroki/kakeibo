@@ -1139,10 +1139,12 @@ function renderDashboard() {
   const allRows = allCSV();
   const mInc=manualInc.reduce((s,r)=>s+(r.amt||0),0);
   const mExp=manualExp.reduce((s,r)=>s+(r.amt||0),0);
-  const hasData = allRows.length>0||mInc>0||mExp>0;
+  const hasData = allRows.length>0||mInc>0||mExp>0||assetHistory.length>0;
   document.getElementById('dash-empty').style.display  = hasData?'none':'block';
   document.getElementById('dash-content').style.display = hasData?'block':'none';
-  if (!hasData) return;
+  // always render asset history section regardless of transaction data
+  renderAssetHist();
+  if (!allRows.length && !mInc && !mExp) return;
   initDashFilter();
   const csvInc = csvRows.filter(r=>r.type==='inc').reduce((s,r)=>s+r.amt,0);
   const csvExp = csvRows.filter(r=>r.type==='exp').reduce((s,r)=>s+Math.abs(r.amt),0);
@@ -1172,8 +1174,6 @@ function renderDashboard() {
   document.getElementById('dash-asset-card').style.display    = hasAsset?'block':'none';
   document.getElementById('dash-no-asset-card').style.display = hasAsset?'none':'block';
   if (hasAsset) renderAssetChart(validAssets);
-
-  renderAssetHist();
 }
 
 /* META */
@@ -1221,7 +1221,10 @@ function loadAssetHistFile(files) {
     reader.onload = ev => {
       const text = new TextDecoder('shift_jis').decode(ev.target.result);
       const rows = parseAssetHistCSV(text);
-      if (!rows.length) return;
+      if (!rows.length) {
+        document.getElementById('err-msg').textContent = `「${file.name}」: 資産推移CSVとして認識できませんでした。マネーフォワードMEの資産推移（月次）CSVをお使いください。`;
+        return;
+      }
       // keep last entry per month (month-end)
       const byMonth = {};
       // CSV is newest-first, so first occurrence per month = month-end (correct)
@@ -1229,7 +1232,13 @@ function loadAssetHistFile(files) {
       assetHistory = Object.values(byMonth).sort((a,b)=>a.month.localeCompare(b.month));
       saveStorage();
       renderAssetHistSummary();
-      renderDashboard();
+      // only render charts if dashboard tab is currently visible
+      if (document.getElementById('tab-dashboard').classList.contains('active')) {
+        renderDashboard();
+      } else {
+        document.getElementById('asset-hist-summary').querySelector('.file-summary-text').innerHTML +=
+          '　<span style="color:var(--accent);">→ ダッシュボードタブで確認できます</span>';
+      }
     };
     reader.readAsArrayBuffer(file);
   });
