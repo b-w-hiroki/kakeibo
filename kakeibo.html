@@ -824,6 +824,28 @@ function updAssetRow(id, field, val) {
   saveStorage();
 }
 
+/* CSV type auto-detection: checks if first data line looks like asset history */
+function isAssetHistCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return false;
+  const cols = lines[1].split(',').map(c => c.replace(/^"|"$/g,'').trim());
+  // Asset history: first col is YYYY/MM/DD, second col is large integer (total assets)
+  return /^\d{4}\/\d{2}\/\d{2}$/.test(cols[0]) && parseInt(cols[1]) > 100000;
+}
+
+function applyAssetHistData(text) {
+  const rows = parseAssetHistCSV(text);
+  if (!rows.length) return false;
+  const byMonth = {};
+  rows.forEach(r => { if (!byMonth[r.month]) byMonth[r.month] = r; });
+  assetHistory = Object.values(byMonth).sort((a,b)=>a.month.localeCompare(b.month));
+  saveStorage();
+  renderAssetHistSummary();
+  // Switch to dashboard tab to show results immediately
+  switchTab('dashboard');
+  return true;
+}
+
 /* CSV LOAD */
 function loadFiles(files) {
   document.getElementById('err-msg').textContent = '';
@@ -832,9 +854,17 @@ function loadFiles(files) {
     const reader = new FileReader();
     reader.onload = ev => {
       const text = new TextDecoder('shift_jis').decode(ev.target.result);
+      // Auto-detect: if it looks like asset history CSV, route accordingly
+      if (isAssetHistCSV(text)) {
+        const ok = applyAssetHistData(text);
+        if (!ok) document.getElementById('err-msg').textContent += `「${file.name}」を認識できませんでした。`;
+        else document.getElementById('err-msg').textContent = `「${file.name}」を資産推移CSVとして読み込みました。`;
+        if (--pending === 0) { /* asset history already saved */ }
+        return;
+      }
       const raw = parseCSV(text);
       const rows = processCSV(raw, file.name);
-      if (!rows) document.getElementById('err-msg').textContent += `「${file.name}」を認識できませんでした。`;
+      if (!rows) document.getElementById('err-msg').textContent += `「${file.name}」を認識できませんでした。収支CSVまたは資産推移CSVをお使いください。`;
       else csvFileMap[file.name] = rows;
       if (--pending === 0) { saveStorage(); renderChips(); refreshCSV(); }
     };
@@ -1220,24 +1250,24 @@ function loadAssetHistFile(files) {
     const reader = new FileReader();
     reader.onload = ev => {
       const text = new TextDecoder('shift_jis').decode(ev.target.result);
-      const rows = parseAssetHistCSV(text);
-      if (!rows.length) {
-        document.getElementById('err-msg').textContent = `「${file.name}」: 資産推移CSVとして認識できませんでした。マネーフォワードMEの資産推移（月次）CSVをお使いください。`;
+      // If it's actually a 収支CSV dropped in the wrong zone, handle it
+      if (!isAssetHistCSV(text)) {
+        const raw = parseCSV(text);
+        const rows = processCSV(raw, file.name);
+        if (rows) {
+          csvFileMap[file.name] = rows;
+          saveStorage(); renderChips(); refreshCSV();
+          document.getElementById('err-msg').textContent = `「${file.name}」を収支CSVとして読み込みました。`;
+        } else {
+          document.getElementById('err-msg').textContent = `「${file.name}」を認識できませんでした。マネーフォワードMEの資産推移CSVまたは収支CSVをお使いください。`;
+        }
         return;
       }
-      // keep last entry per month (month-end)
-      const byMonth = {};
-      // CSV is newest-first, so first occurrence per month = month-end (correct)
-      rows.forEach(r => { if (!byMonth[r.month]) byMonth[r.month] = r; });
-      assetHistory = Object.values(byMonth).sort((a,b)=>a.month.localeCompare(b.month));
-      saveStorage();
-      renderAssetHistSummary();
-      // only render charts if dashboard tab is currently visible
-      if (document.getElementById('tab-dashboard').classList.contains('active')) {
-        renderDashboard();
+      const ok = applyAssetHistData(text);
+      if (!ok) {
+        document.getElementById('err-msg').textContent = `「${file.name}」: 資産推移CSVとして認識できませんでした。`;
       } else {
-        document.getElementById('asset-hist-summary').querySelector('.file-summary-text').innerHTML +=
-          '　<span style="color:var(--accent);">→ ダッシュボードタブで確認できます</span>';
+        document.getElementById('err-msg').textContent = `「${file.name}」を読み込みました（${assetHistory.length}ヶ月分）。`;
       }
     };
     reader.readAsArrayBuffer(file);
