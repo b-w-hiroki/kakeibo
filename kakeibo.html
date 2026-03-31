@@ -1224,7 +1224,8 @@ function loadAssetHistFile(files) {
       if (!rows.length) return;
       // keep last entry per month (month-end)
       const byMonth = {};
-      rows.forEach(r => { byMonth[r.month] = r; });
+      // CSV is newest-first, so first occurrence per month = month-end (correct)
+      rows.forEach(r => { if (!byMonth[r.month]) byMonth[r.month] = r; });
       assetHistory = Object.values(byMonth).sort((a,b)=>a.month.localeCompare(b.month));
       saveStorage();
       renderAssetHistSummary();
@@ -1362,13 +1363,11 @@ function renderRecon() {
 }
 
 /* Drop event for asset history */
-document.addEventListener('DOMContentLoaded', () => {
-  const ahDz = document.getElementById('asset-hist-dropzone');
-  ahDz.ondragover = e=>{e.preventDefault();ahDz.classList.add('over');};
-  ahDz.ondragleave = ()=>ahDz.classList.remove('over');
-  ahDz.ondrop = e=>{e.preventDefault();ahDz.classList.remove('over');loadAssetHistFile(e.dataTransfer.files);};
-  document.getElementById('assethistfile').onchange = function(e){if(e.target.files.length)loadAssetHistFile(e.target.files);e.target.value='';};
-});
+const ahDz = document.getElementById('asset-hist-dropzone');
+ahDz.ondragover = e=>{e.preventDefault();ahDz.classList.add('over');};
+ahDz.ondragleave = ()=>ahDz.classList.remove('over');
+ahDz.ondrop = e=>{e.preventDefault();ahDz.classList.remove('over');loadAssetHistFile(e.dataTransfer.files);};
+document.getElementById('assethistfile').onchange = function(e){if(e.target.files.length)loadAssetHistFile(e.target.files);e.target.value='';};
 
 /* ===== TAX ===== */
 
