@@ -94,11 +94,17 @@ tr:hover td{background:var(--surface2);}
 .drop-title{font-size:14px;color:var(--accent);margin-bottom:6px;}
 .drop-sub{font-size:12px;color:var(--text3);}
 
-/* CHIPS */
-.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1rem;}
-.chip{display:flex;align-items:center;gap:6px;font-size:12px;padding:4px 10px;background:var(--surface2);border:.5px solid var(--border2);border-radius:999px;color:var(--text2);}
-.chip-del{background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;line-height:1;padding:0;transition:color .1s;}
-.chip-del:hover{color:var(--exp);}
+/* FILE SUMMARY */
+.file-summary-bar{display:flex;align-items:center;gap:10px;margin-bottom:1rem;padding:8px 14px;background:var(--surface2);border:.5px solid var(--border2);border-radius:var(--rs);}
+.file-summary-bar.asset{border-color:rgba(56,189,248,.25);}
+.file-summary-icon{font-size:13px;color:var(--text3);}
+.file-summary-text{font-size:12px;color:var(--text2);flex:1;}
+.file-summary-text strong{color:var(--text);font-weight:500;}
+/* FM LIST */
+.fm-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:.5px solid var(--border);}
+.fm-row:last-child{border-bottom:none;}
+.fm-name{font-size:13px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fm-empty{font-size:12px;color:var(--text3);padding:6px 0;}
 
 /* MANUAL */
 .entry-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
@@ -217,13 +223,13 @@ tr:hover td{background:var(--surface2);}
     <div class="drop-sub">複数ファイル同時OK・追加読み込みOK　/ クリックしてファイル選択</div>
     <input type="file" id="csvfile" accept=".csv" multiple style="display:none">
   </div>
-  <div class="chips" id="file-chips"></div>
+  <div id="file-summary"></div>
   <div class="drop-zone asset-zone" id="asset-dropzone" onclick="document.getElementById('assetfile').click()">
     <div class="drop-title" style="color:var(--asset);">資産CSVをここにドロップ（任意）</div>
     <div class="drop-sub">マネーフォワードME → 資産 → CSVダウンロード　/ 口座残高・資産内訳の表示に使用</div>
     <input type="file" id="assetfile" accept=".csv" multiple style="display:none">
   </div>
-  <div class="chips" id="asset-chips"></div>
+  <div id="asset-summary"></div>
   <div class="err" id="err-msg"></div>
 
   <div id="csv-summary" style="display:none">
@@ -296,6 +302,22 @@ tr:hover td{background:var(--surface2);}
     <div class="metric"><div class="metric-label">収入合計</div><div class="metric-value v-inc" id="mi">¥0</div></div>
     <div class="metric"><div class="metric-label">支出合計</div><div class="metric-value v-exp" id="me">¥0</div></div>
     <div class="metric"><div class="metric-label">収支バランス</div><div class="metric-value" id="mb">¥0</div></div>
+  </div>
+</div>
+
+<!-- MODAL: ファイル管理 -->
+<div class="modal-bg" id="file-modal">
+  <div class="modal" style="max-width:540px;">
+    <div class="modal-head">
+      <div class="modal-title">読み込み済みファイル</div>
+      <button class="modal-close" onclick="closeFileModal()">×</button>
+    </div>
+    <div class="modal-body" style="padding:1.25rem 1.5rem;">
+      <div style="font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.75rem;">収支CSV</div>
+      <div id="fm-csv-list"></div>
+      <div style="font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin:1.25rem 0 .75rem;">資産CSV</div>
+      <div id="fm-asset-list"></div>
+    </div>
   </div>
 </div>
 
@@ -483,22 +505,55 @@ function loadAssetFiles(files) {
 }
 
 function renderChips() {
-  document.getElementById('file-chips').innerHTML = Object.keys(csvFileMap).map(n=>`
-    <div class="chip"><span>${n}</span><button class="chip-del" onclick="removeFile('${n.replace(/'/g,"\\'")}')">×</button></div>`).join('');
-}
-
-function renderAssetChips() {
-  if (!assetData.length) { document.getElementById('asset-chips').innerHTML=''; return; }
-  const total = assetData.reduce((s,r)=>s+r.amt,0);
-  document.getElementById('asset-chips').innerHTML = `
-    <div class="chip" style="border-color:rgba(56,189,248,.4);color:var(--asset);">
-      <span>資産合計 ${fmt(total)}（${assetData.length}口座）</span>
-      <button class="chip-del" onclick="clearAsset()">×</button>
+  const names = Object.keys(csvFileMap);
+  const el = document.getElementById('file-summary');
+  if (!names.length) { el.innerHTML=''; return; }
+  const months = [...new Set(allCSV().map(r=>r.month).filter(Boolean))];
+  el.innerHTML = `
+    <div class="file-summary-bar">
+      <span class="file-summary-icon">📂</span>
+      <span class="file-summary-text"><strong>${names.length}件</strong>のCSV読み込み済み（${months.length}ヶ月分）</span>
+      <button class="action-btn" onclick="openFileModal()">ファイルを管理</button>
     </div>`;
 }
 
+function renderAssetChips() {
+  const el = document.getElementById('asset-summary');
+  if (!assetData.length) { el.innerHTML=''; return; }
+  const total = assetData.reduce((s,r)=>s+r.amt,0);
+  el.innerHTML = `
+    <div class="file-summary-bar asset">
+      <span class="file-summary-icon">🏦</span>
+      <span class="file-summary-text"><strong>${assetData.length}口座</strong>の資産データ読み込み済み（合計 ${fmt(total)}）</span>
+      <button class="action-btn" onclick="openFileModal()">ファイルを管理</button>
+    </div>`;
+}
+
+function openFileModal() {
+  const names = Object.keys(csvFileMap);
+  document.getElementById('fm-csv-list').innerHTML = names.length
+    ? names.map(n=>`
+        <div class="fm-row">
+          <span class="fm-name" title="${n}">${n}</span>
+          <span style="font-size:11px;color:var(--text3);">${csvFileMap[n].length}件</span>
+          <button class="del-btn" onclick="removeFile('${n.replace(/'/g,"\\'")}')">×</button>
+        </div>`).join('')
+    : '<div class="fm-empty">ファイルなし</div>';
+  document.getElementById('fm-asset-list').innerHTML = assetData.length
+    ? `<div class="fm-row">
+        <span class="fm-name">${assetData.length}口座のデータ（合計 ${fmt(assetData.reduce((s,r)=>s+r.amt,0))}）</span>
+        <button class="del-btn" onclick="clearAsset();openFileModal();">×</button>
+       </div>`
+    : '<div class="fm-empty">ファイルなし</div>';
+  document.getElementById('file-modal').classList.add('open');
+}
+function closeFileModal() { document.getElementById('file-modal').classList.remove('open'); }
+
 function clearAsset() { assetData=[]; saveStorage(); renderAssetChips(); updateMeta(); }
-function removeFile(name) { delete csvFileMap[name]; saveStorage(); renderChips(); refreshCSV(); }
+function removeFile(name) {
+  delete csvFileMap[name]; saveStorage(); renderChips(); refreshCSV();
+  if (document.getElementById('file-modal').classList.contains('open')) openFileModal();
+}
 function allCSV() { return Object.values(csvFileMap).flat(); }
 
 function refreshCSV() {
@@ -672,8 +727,9 @@ function applyModalFilter() {
   document.getElementById('modal-count').textContent = sorted.length.toLocaleString()+'件';
   document.getElementById('modal-tbody').innerHTML = sorted.map(rowHtml).join('');
 }
-document.getElementById('all-modal').onclick = e => { if(e.target===document.getElementById('all-modal')) closeAllModal(); };
-document.addEventListener('keydown', e => { if(e.key==='Escape') closeAllModal(); });
+document.getElementById('all-modal').onclick  = e => { if(e.target===document.getElementById('all-modal'))  closeAllModal(); };
+document.getElementById('file-modal').onclick = e => { if(e.target===document.getElementById('file-modal')) closeFileModal(); };
+document.addEventListener('keydown', e => { if(e.key==='Escape'){ closeAllModal(); closeFileModal(); } });
 ['mf-month','mf-type','mf-cat'].forEach(id=>document.getElementById(id).onchange=applyModalFilter);
 
 /* MANUAL */
