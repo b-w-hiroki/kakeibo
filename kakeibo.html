@@ -316,6 +316,10 @@ tr:hover td{background:var(--surface2);}
       <div class="metric"><div class="metric-label">収支バランス</div><div class="metric-value" id="db">¥0</div><div class="metric-sub" id="db-sub"></div></div>
       <div class="metric"><div class="metric-label">月平均支出</div><div class="metric-value v-exp" id="da">¥0</div><div class="metric-sub" id="da-sub"></div></div>
     </div>
+    <div id="dash-yoy-section" style="display:none;margin-bottom:1.5rem;">
+      <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">前年同月比</div>
+      <div id="dash-yoy-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1px;background:var(--border);border:.5px solid var(--border);border-radius:var(--r);overflow:hidden;"></div>
+    </div>
     <div id="dash-fixed-section" style="display:none;margin-bottom:1.5rem;">
       <div class="metrics" style="margin-bottom:0;">
         <div class="metric">
@@ -334,10 +338,6 @@ tr:hover td{background:var(--surface2);}
           <div class="metric-sub">支出に占める固定費の割合</div>
         </div>
       </div>
-    </div>
-    <div id="dash-yoy-section" style="display:none;margin-bottom:1.5rem;">
-      <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">前年同月比</div>
-      <div id="dash-yoy-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1px;background:var(--border);border:.5px solid var(--border);border-radius:var(--r);overflow:hidden;"></div>
     </div>
     <div class="grid-2">
       <div class="card">
@@ -480,7 +480,7 @@ tr:hover td{background:var(--surface2);}
         <div style="display:flex;gap:8px;align-items:center;">
           <div class="row-count" id="csv-row-count"></div>
           <button class="action-btn" onclick="openAllModal()">全件表示</button>
-          <button class="action-btn" onclick="exportCSV(allCSV())">CSVエクスポート</button>
+          <button class="action-btn" onclick="exportCSVFromTab()">CSVエクスポート</button>
         </div>
       </div>
       <div class="table-wrap table-scroll">
@@ -1307,6 +1307,19 @@ function renderYoY(rows) {
 }
 
 /* EXPORT CSV */
+function getTabFilteredCSVRows() {
+  const all = allCSV();
+  const month = document.getElementById('cf-month').value;
+  const type  = document.getElementById('cf-type').value;
+  let rows = all;
+  if (month) rows = rows.filter(r => r.month === month);
+  if (type)  rows = rows.filter(r => r.type === type);
+  return rows;
+}
+function exportCSVFromTab() {
+  exportCSV(getTabFilteredCSVRows());
+}
+
 function exportCSV(rows) {
   if (!rows.length) { showToast('エクスポートするデータがありません', 'error'); return; }
   const headers = ['日付','内容','カテゴリ','口座','収支','金額'];
@@ -1323,7 +1336,9 @@ function exportCSV(rows) {
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = `kakeibo_export_${new Date().toISOString().slice(0,10)}.csv`;
+  const d = new Date();
+  const ymd = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  a.download = `kakeibo_export_${ymd}.csv`;
   a.click();
   URL.revokeObjectURL(url);
   showToast(`${rows.length.toLocaleString()}件をエクスポートしました`, 'success');
@@ -1883,19 +1898,21 @@ function calcEarthquakeDeduction(premium) {
   return Math.min(premium, 50000);
 }
 
-/* 配偶者特別控除（申告者所得900万以下の簡易計算） */
+/* 配偶者控除・配偶者特別控除（本人課税所得900万円以下の簡易表・参考） */
 function calcSpouseDeduction(spouseIncome, taxpayerIncome) {
   if (taxpayerIncome > 9000000) return 0;
-  if (spouseIncome <= 480000)  return 380000;
-  if (spouseIncome <= 550000)  return 380000;
-  if (spouseIncome <= 600000)  return 360000;
-  if (spouseIncome <= 650000)  return 310000;
-  if (spouseIncome <= 700000)  return 260000;
-  if (spouseIncome <= 750000)  return 210000;
-  if (spouseIncome <= 800000)  return 160000;
-  if (spouseIncome <= 850000)  return 110000;
-  if (spouseIncome <= 900000)  return 60000;
-  if (spouseIncome <= 950000)  return 30000;
+  if (spouseIncome <= 480000) return 380000;
+  if (spouseIncome > 1330000) return 0;
+  if (spouseIncome <= 500000) return 380000;
+  if (spouseIncome <= 550000) return 360000;
+  if (spouseIncome <= 600000) return 310000;
+  if (spouseIncome <= 650000) return 260000;
+  if (spouseIncome <= 700000) return 210000;
+  if (spouseIncome <= 750000) return 160000;
+  if (spouseIncome <= 800000) return 110000;
+  if (spouseIncome <= 850000) return 60000;
+  if (spouseIncome <= 900000) return 30000;
+  if (spouseIncome <= 950000) return 0;
   if (spouseIncome <= 1000000) return 30000;
   if (spouseIncome <= 1050000) return 26000;
   if (spouseIncome <= 1100000) return 21000;
@@ -2068,19 +2085,20 @@ function renderTaxResult() {
   const bizTax = (type==='business'||type==='both') && bizTaxBase > 0
     ? Math.floor(bizTaxBase * 0.05) : 0;
 
-  rows.push(`<tr><td colspan="2" style="font-size:10px;color:var(--text3);letter-spacing:.08em;padding-top:16px;padding-bottom:4px;">▍ 参考：その他の税（別途納付）</td></tr>`);
-  rows.push(r('住民税（概算・均等割含む）', juuminTax));
-  if (bizTax > 0) rows.push(r('個人事業税（概算・290万控除後×5%）', bizTax));
-  rows.push(`<tr class="sub-row"><td colspan="2" style="font-size:10px;color:var(--text3);padding-top:4px;">※ 住民税・事業税は翌年6月以降の納付。実際の金額は自治体・業種により異なります。</td></tr>`);
+  rows.push(`<tr><td colspan="2" style="font-size:10px;color:var(--text3);letter-spacing:.08em;padding-top:16px;padding-bottom:4px;">▍ 参考値：その他の税（別途納付）</td></tr>`);
+  rows.push(r('住民税（参考値・課税所得×10%＋均等割5,000円）', juuminTax));
+  if (bizTax > 0) rows.push(r('個人事業税（参考値・事業所得290万超過分×5%）', bizTax));
+  rows.push(`<tr class="sub-row"><td colspan="2" style="font-size:10px;color:var(--text3);padding-top:4px;">※ いずれも簡易な参考値です。翌年6月以降の納付。実際の金額は自治体・業種により異なります。</td></tr>`);
 
   /* 実効税率 */
   const totalGrossIncome = salaryIncome + bizIncome + miscIncome;
   if (totalGrossIncome > 0) {
     const effectiveRate    = (totalTax / totalGrossIncome * 100).toFixed(1);
     const effectiveRateAll = ((totalTax + juuminTax) / totalGrossIncome * 100).toFixed(1);
-    rows.push(`<tr><td colspan="2" style="font-size:10px;color:var(--text3);letter-spacing:.08em;padding-top:16px;padding-bottom:4px;">▍ 実効税率</td></tr>`);
-    rows.push(`<tr><td style="color:var(--text2);">所得税の実効税率</td><td style="font-family:'DM Mono',monospace;text-align:right;">${effectiveRate}%</td></tr>`);
-    rows.push(`<tr><td style="color:var(--text2);">所得税＋住民税の実効税率（概算）</td><td style="font-family:'DM Mono',monospace;text-align:right;color:var(--accent);">${effectiveRateAll}%</td></tr>`);
+    rows.push(`<tr><td colspan="2" style="font-size:10px;color:var(--text3);letter-spacing:.08em;padding-top:16px;padding-bottom:4px;">▍ 参考値：実効税率</td></tr>`);
+    rows.push(`<tr><td style="color:var(--text2);">所得税の実効税率（参考値）</td><td style="font-family:'DM Mono',monospace;text-align:right;">${effectiveRate}%</td></tr>`);
+    rows.push(`<tr><td style="color:var(--text2);">所得税＋住民税の実効税率（参考値・概算）</td><td style="font-family:'DM Mono',monospace;text-align:right;color:var(--accent);">${effectiveRateAll}%</td></tr>`);
+    rows.push(`<tr class="sub-row"><td colspan="2" style="font-size:10px;color:var(--text3);padding-top:4px;">※ 総所得金額（給与収入＋事業売上＋雑収入）に対する比率の参考値です。</td></tr>`);
   }
 
   document.getElementById('tax-result-body').innerHTML = rows.join('');
