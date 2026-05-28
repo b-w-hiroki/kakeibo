@@ -1513,8 +1513,9 @@ function initDashFilter() {
   const prevFrom = fromSel.value, prevTo = toSel.value;
   // ラベルは「YYYY年MM月」で読みやすく、値は内部表現の "YYYY/MM"
   const label = m => `${m.slice(0,4)}年${m.slice(5,7)}月`;
-  fromSel.innerHTML = '<option value="">開始年月</option>' + months.map(m=>`<option value="${m}">${label(m)}</option>`).join('');
-  toSel.innerHTML   = '<option value="">終了年月</option>' + [...months].reverse().map(m=>`<option value="${m}">${label(m)}</option>`).join('');
+  const desc = [...months].reverse(); // 新しい年月が上（降順）
+  fromSel.innerHTML = '<option value="">開始年月</option>' + desc.map(m=>`<option value="${m}">${label(m)}</option>`).join('');
+  toSel.innerHTML   = '<option value="">終了年月</option>' + desc.map(m=>`<option value="${m}">${label(m)}</option>`).join('');
   // 選択範囲が現存する月に残っていれば復元
   if (prevFrom && months.includes(prevFrom)) fromSel.value = prevFrom;
   if (prevTo   && months.includes(prevTo))   toSel.value   = prevTo;
