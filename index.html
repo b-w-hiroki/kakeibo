@@ -10,20 +10,20 @@
 <style>
 :root {
   --bg:#0f0f0f;--surface:#181818;--surface2:#222;--border:rgba(255,255,255,.08);
-  --border2:rgba(255,255,255,.14);--text:#f0ede8;--text2:#9a9690;--text3:#5c5956;
+  --border2:rgba(255,255,255,.14);--text:#f5f3ee;--text2:#cfcbc4;--text3:#938f89;
   --inc:#4ade80;--inc-dim:rgba(74,222,128,.12);--exp:#f87171;--exp-dim:rgba(248,113,113,.12);
   --accent:#e8d5b0;--accent-dim:rgba(232,213,176,.1);--asset:#38bdf8;--asset-dim:rgba(56,189,248,.1);
   --r:12px;--rs:8px;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
-body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;font-weight:300;min-height:100vh;line-height:1.6;}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;font-weight:400;min-height:100vh;line-height:1.65;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
 header{border-bottom:.5px solid var(--border);padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:rgba(15,15,15,.92);backdrop-filter:blur(12px);z-index:100;}
-.logo{font-family:'DM Mono',monospace;font-size:13px;letter-spacing:.15em;color:var(--accent);text-transform:uppercase;}
-.header-meta{font-size:12px;color:var(--text3);}
+.logo{font-family:'DM Mono',monospace;font-size:14px;letter-spacing:.15em;color:var(--accent);text-transform:uppercase;font-weight:500;}
+.header-meta{font-size:13px;color:var(--text2);}
 .tab-bar{display:flex;gap:2px;padding:1.25rem 1.5rem 0;border-bottom:.5px solid var(--border);overflow-x:auto;scrollbar-width:none;}
 .tab-bar::-webkit-scrollbar{display:none;}
-.tab{padding:.6rem 1.2rem;font-size:13px;color:var(--text2);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-.5px;transition:color .15s,border-color .15s;font-family:inherit;font-weight:400;white-space:nowrap;flex-shrink:0;}
-.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tab{padding:.6rem 1.2rem;font-size:14px;color:var(--text2);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-.5px;transition:color .15s,border-color .15s;font-family:inherit;font-weight:500;white-space:nowrap;flex-shrink:0;}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
 .tab:hover:not(.active){color:var(--text);}
 .panel{display:none;padding:1.5rem;}.panel.active{display:block;}
 
@@ -31,9 +31,9 @@ header{border-bottom:.5px solid var(--border);padding:1rem 1.5rem;display:flex;a
 .metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--border);border:.5px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1.5rem;}
 .metrics-4{grid-template-columns:repeat(4,minmax(0,1fr));}
 .metric{background:var(--surface);padding:1.25rem 1.5rem;}
-.metric-label{font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.4rem;}
-.metric-value{font-family:'DM Mono',monospace;font-size:26px;font-weight:500;letter-spacing:-.02em;}
-.metric-sub{font-size:11px;color:var(--text3);margin-top:4px;}
+.metric-label{font-size:12px;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.4rem;font-weight:500;}
+.metric-value{font-family:'DM Mono',monospace;font-size:28px;font-weight:600;letter-spacing:-.02em;}
+.metric-sub{font-size:12px;color:var(--text2);margin-top:5px;}
 .v-inc{color:var(--inc);}.v-exp{color:var(--exp);}.v-pos{color:var(--inc);}.v-neg{color:var(--exp);}
 
 /* GRID */
@@ -46,135 +46,135 @@ header{border-bottom:.5px solid var(--border);padding:1rem 1.5rem;display:flex;a
   .metrics,.metrics-4{grid-template-columns:1fr 1fr;}
   .panel{padding:1rem;}
   .metric{padding:1rem 1.2rem;}
-  .metric-value{font-size:20px;}
+  .metric-value{font-size:22px;}
   .manual-grid{grid-template-columns:1fr !important;}
 }
 @media(max-width:480px){
   .metrics,.metrics-4{grid-template-columns:1fr;}
   header{padding:.75rem 1rem;}
-  .logo{font-size:11px;}
-  .tab{padding:.5rem .8rem;font-size:12px;}
+  .logo{font-size:12px;}
+  .tab{padding:.5rem .9rem;font-size:13px;}
 }
 
 /* CARD */
 .card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:1.25rem 1.5rem;}
-.card-title{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:1rem;font-weight:500;}
+.card-title{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--text2);margin-bottom:1rem;font-weight:600;}
 
 /* FILTER */
 .filter-bar{display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;align-items:center;}
-.filter-label{font-size:11px;color:var(--text3);}
-select,input[type=text],input[type=number]{background:var(--surface2);border:.5px solid var(--border2);border-radius:var(--rs);color:var(--text);font-family:inherit;font-size:13px;padding:7px 12px;outline:none;transition:border-color .15s;}
+.filter-label{font-size:12px;color:var(--text2);font-weight:500;}
+select,input[type=text],input[type=number]{background:var(--surface2);border:.5px solid var(--border2);border-radius:var(--rs);color:var(--text);font-family:inherit;font-size:14px;padding:7px 12px;outline:none;transition:border-color .15s;font-weight:400;}
 select:focus,input:focus{border-color:rgba(232,213,176,.4);}
 select option{background:#222;}
 
 /* TABLE */
 .table-wrap{overflow-x:auto;}
 .table-scroll{max-height:360px;overflow-y:auto;}
-table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;}
-th{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-weight:400;padding:8px 10px;border-bottom:.5px solid var(--border);text-align:left;position:sticky;top:0;background:var(--surface);z-index:1;}
-td{padding:9px 10px;border-bottom:.5px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text2);}
+table{width:100%;border-collapse:collapse;font-size:14px;table-layout:fixed;}
+th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);font-weight:600;padding:9px 10px;border-bottom:.5px solid var(--border);text-align:left;position:sticky;top:0;background:var(--surface);z-index:1;}
+td{padding:10px 10px;border-bottom:.5px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);font-weight:400;}
 tr:last-child td{border-bottom:none;}
 tr:hover td{background:var(--surface2);}
-.amt-inc{color:var(--inc);font-family:'DM Mono',monospace;}
-.amt-exp{color:var(--exp);font-family:'DM Mono',monospace;}
+.amt-inc{color:var(--inc);font-family:'DM Mono',monospace;font-weight:500;}
+.amt-exp{color:var(--exp);font-family:'DM Mono',monospace;font-weight:500;}
 
 /* BARS */
 .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:9px;}
-.bar-label{font-size:12px;color:var(--text2);width:110px;min-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;}
+.bar-label{font-size:13px;color:var(--text);width:110px;min-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;font-weight:500;}
 .bar-track{flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;}
 .bar-fill{height:100%;border-radius:3px;transition:width .4s;}
 .bar-right{display:flex;align-items:center;gap:6px;min-width:110px;justify-content:flex-end;}
-.bar-amt{font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);}
-.bar-pct{font-size:10px;color:var(--text3);min-width:34px;text-align:right;}
+.bar-amt{font-family:'DM Mono',monospace;font-size:13px;color:var(--text);font-weight:500;}
+.bar-pct{font-size:11px;color:var(--text2);min-width:38px;text-align:right;font-weight:500;}
 
 /* DROP ZONE */
 .drop-zone{border:1px dashed var(--border2);border-radius:var(--r);padding:2rem 1.5rem;text-align:center;cursor:pointer;transition:background .15s,border-color .15s;margin-bottom:1rem;}
 .drop-zone:hover,.drop-zone.over{background:var(--accent-dim);border-color:rgba(232,213,176,.3);}
 .drop-zone.asset-zone:hover,.drop-zone.asset-zone.over{background:var(--asset-dim);border-color:rgba(56,189,248,.3);}
-.drop-title{font-size:14px;color:var(--accent);margin-bottom:6px;}
-.drop-sub{font-size:12px;color:var(--text3);}
+.drop-title{font-size:15px;color:var(--accent);margin-bottom:6px;font-weight:600;}
+.drop-sub{font-size:13px;color:var(--text2);}
 
 /* FILE SUMMARY */
 .file-summary-bar{display:flex;align-items:center;gap:10px;margin-bottom:1rem;padding:8px 14px;background:var(--surface2);border:.5px solid var(--border2);border-radius:var(--rs);}
 .file-summary-bar.asset{border-color:rgba(56,189,248,.25);}
-.file-summary-icon{font-size:13px;color:var(--text3);}
-.file-summary-text{font-size:12px;color:var(--text2);flex:1;}
-.file-summary-text strong{color:var(--text);font-weight:500;}
+.file-summary-icon{font-size:14px;color:var(--text2);}
+.file-summary-text{font-size:13px;color:var(--text);flex:1;}
+.file-summary-text strong{color:var(--text);font-weight:600;}
 /* FM LIST */
 .fm-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:.5px solid var(--border);}
 .fm-row:last-child{border-bottom:none;}
-.fm-name{font-size:13px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.fm-empty{font-size:12px;color:var(--text3);padding:6px 0;}
+.fm-name{font-size:14px;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fm-empty{font-size:13px;color:var(--text2);padding:6px 0;}
 
 /* MANUAL */
 .entry-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
 .entry-row input{flex:1;min-width:0;}
 .entry-row .amt-in{width:120px;flex:none;}
-.del-btn{background:none;border:.5px solid var(--border2);border-radius:var(--rs);color:var(--text3);cursor:pointer;padding:5px 10px;font-size:14px;transition:color .1s,border-color .1s;}
+.del-btn{background:none;border:.5px solid var(--border2);border-radius:var(--rs);color:var(--text2);cursor:pointer;padding:5px 10px;font-size:15px;transition:color .1s,border-color .1s;}
 .del-btn:hover{color:var(--exp);border-color:var(--exp);}
-.add-btn{background:none;border:.5px solid var(--border2);border-radius:var(--rs);color:var(--text2);cursor:pointer;padding:6px 14px;font-size:13px;font-family:inherit;transition:background .15s,color .15s;margin-top:4px;}
+.add-btn{background:none;border:.5px solid var(--border2);border-radius:var(--rs);color:var(--text);cursor:pointer;padding:7px 14px;font-size:14px;font-family:inherit;font-weight:500;transition:background .15s,color .15s;margin-top:4px;}
 .add-btn:hover{background:var(--accent-dim);color:var(--accent);}
 
 /* MISC */
-.section-label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;}
-.note{font-size:12px;color:var(--text3);margin-bottom:1rem;padding:4px 0 4px 12px;border-left:2px solid var(--border2);}
-.err{font-size:12px;color:var(--exp);margin-top:6px;}
+.section-label{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);margin-bottom:10px;font-weight:600;}
+.note{font-size:13px;color:var(--text2);margin-bottom:1rem;padding:6px 0 6px 12px;border-left:2px solid var(--border2);line-height:1.6;}
+.err{font-size:13px;color:var(--exp);margin-top:6px;font-weight:500;}
 .chart-wrap{position:relative;width:100%;height:220px;}
 .chart-wrap-lg{position:relative;width:100%;height:260px;}
 .chart-wrap-sm{position:relative;width:100%;height:180px;}
-.row-count{font-size:12px;color:var(--text3);}
-.legend{display:flex;gap:16px;margin-bottom:10px;font-size:12px;color:var(--text2);flex-wrap:wrap;}
-.legend span{display:flex;align-items:center;gap:5px;}
+.row-count{font-size:13px;color:var(--text2);}
+.legend{display:flex;gap:16px;margin-bottom:10px;font-size:13px;color:var(--text);flex-wrap:wrap;font-weight:500;}
+.legend span{display:flex;align-items:center;gap:6px;}
 .legend-dot{width:10px;height:10px;border-radius:2px;}
 
 /* BADGE */
-.badge{display:inline-block;font-size:12px;}
+.badge{display:inline-block;font-size:13px;font-weight:500;}
 .badge-inc{color:var(--inc);}
 .badge-exp{color:var(--exp);}
 
 /* ACTION BTN */
-.action-btn{background:none;border:.5px solid var(--border2);border-radius:var(--rs);color:var(--text2);cursor:pointer;padding:5px 14px;font-size:12px;font-family:inherit;transition:background .15s,color .15s;}
-.action-btn:hover{background:var(--accent-dim);color:var(--accent);}
+.action-btn{background:none;border:.5px solid var(--border2);border-radius:var(--rs);color:var(--text);cursor:pointer;padding:6px 14px;font-size:13px;font-family:inherit;font-weight:500;transition:background .15s,color .15s,border-color .15s;}
+.action-btn:hover{background:var(--accent-dim);color:var(--accent);border-color:rgba(232,213,176,.35);}
 
 /* TAX */
 .tax-section{margin-bottom:1.5rem;}
 .tax-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap;}
-.tax-label{font-size:13px;color:var(--text2);min-width:180px;flex-shrink:0;}
+.tax-label{font-size:14px;color:var(--text);min-width:180px;flex-shrink:0;font-weight:500;}
 .tax-input{width:160px;}
-.tax-unit{font-size:12px;color:var(--text3);}
-.tax-note{font-size:11px;color:var(--text3);margin-top:2px;}
-.tax-auto{font-size:12px;color:var(--accent);font-family:'DM Mono',monospace;}
+.tax-unit{font-size:13px;color:var(--text2);}
+.tax-note{font-size:12px;color:var(--text2);margin-top:2px;}
+.tax-auto{font-size:13px;color:var(--accent);font-family:'DM Mono',monospace;font-weight:600;}
 .deduction-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;}
 @media(max-width:600px){.deduction-grid{grid-template-columns:1fr;}.tax-label{min-width:140px;}}
 .deduction-item{display:flex;align-items:center;gap:8px;}
-.deduction-item input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;}
-.deduction-item label{font-size:13px;color:var(--text2);cursor:pointer;flex:1;}
+.deduction-item input[type=checkbox]{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;}
+.deduction-item label{font-size:14px;color:var(--text);cursor:pointer;flex:1;font-weight:500;}
 .deduction-item .tax-input{width:120px;}
 .result-table{width:100%;border-collapse:collapse;margin-top:8px;}
-.result-table tr td{padding:8px 12px;border-bottom:.5px solid var(--border);font-size:13px;}
-.result-table tr td:first-child{color:var(--text2);width:55%;}
-.result-table tr td:last-child{font-family:'DM Mono',monospace;text-align:right;color:var(--text);}
-.result-table .total-row td{font-size:15px;font-weight:500;border-top:1px solid var(--border2);border-bottom:none;padding-top:12px;}
-.result-table .sub-row td{color:var(--text3);font-size:12px;}
-.result-table .highlight td:last-child{color:var(--exp);font-size:18px;}
-.result-table .positive td:last-child{color:var(--inc);}
-.exp-check-item{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:.5px solid var(--border);}
+.result-table tr td{padding:9px 12px;border-bottom:.5px solid var(--border);font-size:14px;}
+.result-table tr td:first-child{color:var(--text2);width:55%;font-weight:500;}
+.result-table tr td:last-child{font-family:'DM Mono',monospace;text-align:right;color:var(--text);font-weight:500;}
+.result-table .total-row td{font-size:16px;font-weight:600;border-top:1px solid var(--border2);border-bottom:none;padding-top:12px;color:var(--text)!important;}
+.result-table .sub-row td{color:var(--text2);font-size:13px;}
+.result-table .highlight td:last-child{color:var(--exp);font-size:20px;font-weight:700;}
+.result-table .positive td:last-child{color:var(--inc);font-weight:600;}
+.exp-check-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:.5px solid var(--border);}
 .exp-check-item:last-child{border-bottom:none;}
-.exp-check-item input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;}
-.exp-check-item label{font-size:13px;color:var(--text2);flex:1;}
-.exp-check-amt{font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);min-width:100px;text-align:right;}
-.tax-badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:999px;background:rgba(232,213,176,.12);color:var(--accent);margin-left:6px;}
-.print-btn{background:var(--surface2);border:.5px solid var(--border2);border-radius:var(--rs);color:var(--text2);cursor:pointer;padding:8px 20px;font-size:13px;font-family:inherit;transition:background .15s;}
+.exp-check-item input[type=checkbox]{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;}
+.exp-check-item label{font-size:14px;color:var(--text);flex:1;}
+.exp-check-amt{font-family:'DM Mono',monospace;font-size:13px;color:var(--text);min-width:100px;text-align:right;font-weight:500;}
+.tax-badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(232,213,176,.18);color:var(--accent);margin-left:6px;font-weight:600;}
+.print-btn{background:var(--surface2);border:.5px solid var(--border2);border-radius:var(--rs);color:var(--text);cursor:pointer;padding:8px 20px;font-size:14px;font-family:inherit;font-weight:500;transition:background .15s;}
 .print-btn:hover{background:var(--accent-dim);color:var(--accent);}
 @media print{
   header,.tab-bar,.no-print{display:none!important;}
-  body{background:#fff;color:#111;}
+  body{background:#fff;color:#111;font-weight:400;}
   .panel.active{padding:0;}
   .card{background:#fff;border:1px solid #ddd;box-shadow:none;margin-bottom:12px;}
-  .card-title{color:#555;}
+  .card-title{color:#333;font-weight:700;}
   .metric-value{color:#111!important;}
   .result-table tr td{color:#111!important;border-color:#ddd;}
-  .result-table tr td:first-child{color:#555!important;}
+  .result-table tr td:first-child{color:#333!important;}
 
   /* ダッシュボード印刷用追加スタイル */
   #tab-csv,#tab-manual,#tab-tax{display:none!important;}
@@ -186,8 +186,8 @@ tr:hover td{background:var(--surface2);}
   .metric-value{color:#111!important;}
   .v-inc{color:#059669!important;}.v-exp{color:#dc2626!important;}
   .v-pos{color:#059669!important;}.v-neg{color:#dc2626!important;}
-  .card-title,.metric-label,.metric-sub{color:#555!important;}
-  .bar-label,.bar-amt,.bar-pct{color:#333!important;}
+  .card-title,.metric-label,.metric-sub{color:#333!important;}
+  .bar-label,.bar-amt,.bar-pct{color:#222!important;}
   .grid-2{grid-template-columns:1fr!important;}
   .chart-wrap-lg{height:180px!important;}
   .chart-wrap-sm{height:140px!important;}
@@ -198,45 +198,45 @@ tr:hover td{background:var(--surface2);}
 
 /* ASSET HISTORY */
 .drop-zone.ah-zone:hover,.drop-zone.ah-zone.over{background:rgba(167,139,250,.08);border-color:rgba(167,139,250,.35);}
-.recon-table{width:100%;border-collapse:collapse;font-size:12px;}
-.recon-table th{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);padding:6px 10px;border-bottom:.5px solid var(--border);text-align:right;}
+.recon-table{width:100%;border-collapse:collapse;font-size:13px;}
+.recon-table th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);padding:7px 10px;border-bottom:.5px solid var(--border);text-align:right;font-weight:600;}
 .recon-table th:first-child,.recon-table th:nth-child(2){text-align:left;}
-.recon-table td{padding:7px 10px;border-bottom:.5px solid var(--border);text-align:right;font-family:'DM Mono',monospace;color:var(--text2);}
-.recon-table td:first-child{text-align:left;font-family:inherit;}
+.recon-table td{padding:8px 10px;border-bottom:.5px solid var(--border);text-align:right;font-family:'DM Mono',monospace;color:var(--text);font-weight:400;}
+.recon-table td:first-child{text-align:left;font-family:inherit;font-weight:500;}
 .recon-table td:nth-child(2){text-align:left;}
 .recon-table tr:hover td{background:var(--surface2);}
-.recon-ok{color:var(--inc);}.recon-warn{color:var(--accent);}.recon-bad{color:var(--exp);}
+.recon-ok{color:var(--inc);font-weight:600;}.recon-warn{color:var(--accent);font-weight:600;}.recon-bad{color:var(--exp);font-weight:600;}
 .recon-status{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;}
-.tax-link-btn{display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(232,213,176,.06);border:.5px solid rgba(232,213,176,.2);border-radius:var(--rs);margin-bottom:1rem;}
-.tax-link-label{font-size:13px;color:var(--text2);flex:1;}
-.tax-link-detail{font-size:11px;color:var(--text3);}
+.tax-link-btn{display:flex;align-items:center;gap:8px;padding:12px 14px;background:rgba(232,213,176,.08);border:.5px solid rgba(232,213,176,.25);border-radius:var(--rs);margin-bottom:1rem;}
+.tax-link-label{font-size:14px;color:var(--text);flex:1;font-weight:500;}
+.tax-link-detail{font-size:12px;color:var(--text2);}
 
 /* MODAL */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
 .modal-bg.open{display:flex;}
 .modal{background:var(--surface);border:.5px solid var(--border2);border-radius:var(--r);width:min(96vw,920px);max-height:90vh;display:flex;flex-direction:column;}
 .modal-head{display:flex;justify-content:space-between;align-items:center;padding:1rem 1.5rem;border-bottom:.5px solid var(--border);flex-shrink:0;}
-.modal-title{font-size:14px;color:var(--text);}
-.modal-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:22px;line-height:1;padding:0;}
+.modal-title{font-size:15px;color:var(--text);font-weight:600;}
+.modal-close{background:none;border:none;color:var(--text2);cursor:pointer;font-size:24px;line-height:1;padding:0;}
 .modal-close:hover{color:var(--text);}
 .modal-body{flex:1;overflow-y:auto;padding:1rem 1.5rem;}
 .toast {
   display:flex; align-items:center; gap:10px;
-  padding:10px 16px;
+  padding:12px 18px;
   background:var(--surface2);
   border:.5px solid var(--border2);
   border-radius:var(--rs);
-  font-size:13px; color:var(--text);
+  font-size:14px; color:var(--text); font-weight:500;
   box-shadow:0 4px 24px rgba(0,0,0,.5);
   pointer-events:auto;
   animation:toast-in .2s ease;
-  max-width:320px;
-  line-height:1.4;
+  max-width:340px;
+  line-height:1.5;
 }
-.toast.success { border-color:rgba(74,222,128,.4); }
-.toast.error   { border-color:rgba(248,113,113,.4); }
-.toast.info    { border-color:rgba(232,213,176,.3); }
-.toast-icon { font-size:15px; flex-shrink:0; }
+.toast.success { border-color:rgba(74,222,128,.5); }
+.toast.error   { border-color:rgba(248,113,113,.5); }
+.toast.info    { border-color:rgba(232,213,176,.4); }
+.toast-icon { font-size:16px; flex-shrink:0; }
 .toast-msg  { flex:1; }
 @keyframes toast-in {
   from { opacity:0; transform:translateY(8px); }
@@ -249,7 +249,7 @@ tr:hover td{background:var(--surface2);}
   border:.5px solid var(--border2);
   border-radius:var(--r);
   color:var(--text);
-  font-family:inherit; font-size:14px;
+  font-family:inherit; font-size:15px; font-weight:500;
   cursor:pointer; text-align:left;
   transition:background .15s, border-color .15s;
   min-width:200px;
@@ -276,25 +276,25 @@ tr:hover td{background:var(--surface2);}
 
 <!-- DASHBOARD TAB -->
 <div class="panel active" id="tab-dashboard">
-  <div id="dash-empty" style="text-align:center;padding:4rem 0;color:var(--text3);font-size:14px;">
-    <div style="font-size:32px;margin-bottom:1rem;">📊</div>
-    <div style="font-size:16px;color:var(--text);margin-bottom:6px;font-weight:500;">まずデータを追加しましょう</div>
-    <div style="font-size:13px;color:var(--text3);margin-bottom:2rem;line-height:1.8;">
+  <div id="dash-empty" style="text-align:center;padding:4rem 0;color:var(--text2);font-size:15px;">
+    <div style="font-size:36px;margin-bottom:1rem;">📊</div>
+    <div style="font-size:18px;color:var(--text);margin-bottom:8px;font-weight:600;">まずデータを追加しましょう</div>
+    <div style="font-size:14px;color:var(--text2);margin-bottom:2rem;line-height:1.8;">
       マネーフォワードMEのCSVを取り込むか、<br>手動で収支を入力してください
     </div>
     <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
       <button class="onboard-btn" onclick="switchTab('csv')">
-        <span style="font-size:20px;">📂</span>
+        <span style="font-size:22px;">📂</span>
         <div>
-          <div style="font-weight:500;margin-bottom:2px;">CSVを取り込む</div>
-          <div style="font-size:11px;color:var(--text3);">マネーフォワードMEのCSVに対応</div>
+          <div style="font-weight:600;margin-bottom:3px;">CSVを取り込む</div>
+          <div style="font-size:12px;color:var(--text2);font-weight:400;">マネーフォワードMEのCSVに対応</div>
         </div>
       </button>
       <button class="onboard-btn" onclick="switchTab('manual')">
-        <span style="font-size:20px;">✏️</span>
+        <span style="font-size:22px;">✏️</span>
         <div>
-          <div style="font-weight:500;margin-bottom:2px;">手動で入力する</div>
-          <div style="font-size:11px;color:var(--text3);">収入・支出を直接入力</div>
+          <div style="font-weight:600;margin-bottom:3px;">手動で入力する</div>
+          <div style="font-size:12px;color:var(--text2);font-weight:400;">収入・支出を直接入力</div>
         </div>
       </button>
     </div>
@@ -489,7 +489,7 @@ tr:hover td{background:var(--surface2);}
             <th style="width:90px;">日付</th>
             <th>内容</th>
             <th style="width:100px;">カテゴリ</th>
-            <th style="width:90px;font-size:9px;">口座</th>
+            <th style="width:90px;font-size:11px;">口座</th>
             <th style="width:110px;text-align:right;">金額</th>
           </tr></thead>
           <tbody id="csv-tbody"></tbody>
@@ -673,7 +673,7 @@ tr:hover td{background:var(--surface2);}
           <label for="dc-social">社会保険料控除</label>
           <input type="number" id="dc-social-amt" class="tax-input" placeholder="年間合計" min="0" oninput="renderTaxResult()">
         </div>
-        <div style="font-size:10px;color:var(--text3);margin-left:22px;margin-top:2px;">健康保険・厚生年金・雇用保険など</div>
+        <div style="font-size:12px;color:var(--text2);margin-left:22px;margin-top:2px;">健康保険・厚生年金・雇用保険など</div>
       </div>
       <!-- 生命保険料控除 -->
       <div>
@@ -682,7 +682,7 @@ tr:hover td{background:var(--surface2);}
           <label for="dc-life">生命保険料控除</label>
         </div>
         <div id="dc-life-detail" style="display:none;margin-left:22px;margin-top:6px;">
-          <div style="font-size:10px;color:var(--text3);margin-bottom:6px;">各種類の年間支払保険料を入力（それぞれ最大4万円控除、合算上限12万円）</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">各種類の年間支払保険料を入力（それぞれ最大4万円控除、合算上限12万円）</div>
           <div class="tax-row" style="margin-bottom:6px;">
             <span style="font-size:12px;color:var(--text2);min-width:100px;">一般生命保険</span>
             <input type="number" id="dc-life-general" class="tax-input" style="width:120px;" placeholder="0" min="0" oninput="renderTaxResult()">
@@ -707,7 +707,7 @@ tr:hover td{background:var(--surface2);}
           <label for="dc-earthquake">地震保険料控除</label>
           <input type="number" id="dc-earthquake-amt" class="tax-input" placeholder="支払額" min="0" oninput="renderTaxResult()">
         </div>
-        <div style="font-size:10px;color:var(--text3);margin-left:22px;margin-top:2px;">最大5万円</div>
+        <div style="font-size:12px;color:var(--text2);margin-left:22px;margin-top:2px;">最大5万円</div>
       </div>
       <!-- 医療費控除 -->
       <div>
@@ -738,7 +738,7 @@ tr:hover td{background:var(--surface2);}
           <label for="dc-furusato">寄附金控除（ふるさと納税など）</label>
           <input type="number" id="dc-furusato-amt" class="tax-input" placeholder="寄附金合計" min="0" oninput="renderTaxResult()">
         </div>
-        <div style="font-size:10px;color:var(--text3);margin-left:22px;margin-top:2px;">控除額 = 寄附金 − 2,000円</div>
+        <div style="font-size:12px;color:var(--text2);margin-left:22px;margin-top:2px;">控除額 = 寄附金 − 2,000円</div>
       </div>
       <!-- 住宅ローン控除 -->
       <div>
@@ -747,7 +747,7 @@ tr:hover td{background:var(--surface2);}
           <label for="dc-housing">住宅借入金等特別控除（住宅ローン）</label>
           <input type="number" id="dc-housing-amt" class="tax-input" placeholder="控除額" min="0" oninput="renderTaxResult()">
         </div>
-        <div style="font-size:10px;color:var(--text3);margin-left:22px;margin-top:2px;">税額控除（源泉徴収票または住宅ローン控除証明書に記載）</div>
+        <div style="font-size:12px;color:var(--text2);margin-left:22px;margin-top:2px;">税額控除（源泉徴収票または住宅ローン控除証明書に記載）</div>
       </div>
     </div>
   </div>
@@ -820,7 +820,7 @@ tr:hover td{background:var(--surface2);}
             <th style="width:90px;">日付</th>
             <th>内容</th>
             <th style="width:100px;">カテゴリ</th>
-            <th style="width:90px;font-size:9px;">口座</th>
+            <th style="width:90px;font-size:11px;">口座</th>
             <th style="width:110px;text-align:right;">金額</th>
           </tr></thead>
           <tbody id="modal-tbody"></tbody>
@@ -2025,7 +2025,7 @@ function renderTaxResult() {
   const r = (label, val, cls='', unit='円') =>
     `<tr class="${cls}"><td>${label}</td><td>${typeof val==='number'? (val<0?'▲ ':'') + Math.abs(val).toLocaleString() + ' '+unit : val}</td></tr>`;
 
-  rows.push('<tr><td colspan="2" style="font-size:10px;color:var(--text3);letter-spacing:.08em;padding-top:0;padding-bottom:4px;">▍ 所得</td></tr>');
+  rows.push('<tr><td colspan="2" style="font-size:12px;color:var(--text2);letter-spacing:.08em;padding-top:0;padding-bottom:4px;">▍ 所得</td></tr>');
   if (type==='salary'||type==='both') {
     rows.push(r('給与収入', salaryIncome));
     rows.push(r('　給与所得控除', -salaryDeduction, 'sub-row'));
@@ -2040,7 +2040,7 @@ function renderTaxResult() {
   if (miscKingaku > 0) rows.push(r('雑所得', miscKingaku));
   rows.push(r('所得合計', totalIncome, 'total-row'));
 
-  rows.push('<tr><td colspan="2" style="font-size:10px;color:var(--text3);letter-spacing:.08em;padding-top:12px;padding-bottom:4px;">▍ 所得控除</td></tr>');
+  rows.push('<tr><td colspan="2" style="font-size:12px;color:var(--text2);letter-spacing:.08em;padding-top:12px;padding-bottom:4px;">▍ 所得控除</td></tr>');
   rows.push(r('基礎控除', -basic, 'sub-row'));
   if (spouse>0)    rows.push(r(spouseIncome<=480000?'配偶者控除':'配偶者特別控除', -spouse, 'sub-row'));
   if (dep>0)       rows.push(r(`扶養控除（${depN}人）`, -dep, 'sub-row'));
@@ -2053,7 +2053,7 @@ function renderTaxResult() {
   rows.push(r('所得控除合計', -totalDeduction, 'total-row'));
   rows.push(r('課税所得', taxableIncome, 'total-row'));
 
-  rows.push('<tr><td colspan="2" style="font-size:10px;color:var(--text3);letter-spacing:.08em;padding-top:12px;padding-bottom:4px;">▍ 税額</td></tr>');
+  rows.push('<tr><td colspan="2" style="font-size:12px;color:var(--text2);letter-spacing:.08em;padding-top:12px;padding-bottom:4px;">▍ 税額</td></tr>');
   rows.push(r('所得税（申告税額）', incomeTax));
   if (housingCredit>0) rows.push(r('　住宅ローン控除', -housingCredit, 'sub-row'));
   rows.push(r('復興特別所得税（2.1%）', fukko, 'sub-row'));
@@ -2085,20 +2085,20 @@ function renderTaxResult() {
   const bizTax = (type==='business'||type==='both') && bizTaxBase > 0
     ? Math.floor(bizTaxBase * 0.05) : 0;
 
-  rows.push(`<tr><td colspan="2" style="font-size:10px;color:var(--text3);letter-spacing:.08em;padding-top:16px;padding-bottom:4px;">▍ 参考値：その他の税（別途納付）</td></tr>`);
+  rows.push(`<tr><td colspan="2" style="font-size:12px;color:var(--text2);letter-spacing:.08em;padding-top:16px;padding-bottom:4px;">▍ 参考値：その他の税（別途納付）</td></tr>`);
   rows.push(r('住民税（参考値・課税所得×10%＋均等割5,000円）', juuminTax));
   if (bizTax > 0) rows.push(r('個人事業税（参考値・事業所得290万超過分×5%）', bizTax));
-  rows.push(`<tr class="sub-row"><td colspan="2" style="font-size:10px;color:var(--text3);padding-top:4px;">※ いずれも簡易な参考値です。翌年6月以降の納付。実際の金額は自治体・業種により異なります。</td></tr>`);
+  rows.push(`<tr class="sub-row"><td colspan="2" style="font-size:12px;color:var(--text2);padding-top:4px;">※ いずれも簡易な参考値です。翌年6月以降の納付。実際の金額は自治体・業種により異なります。</td></tr>`);
 
   /* 実効税率 */
   const totalGrossIncome = salaryIncome + bizIncome + miscIncome;
   if (totalGrossIncome > 0) {
     const effectiveRate    = (totalTax / totalGrossIncome * 100).toFixed(1);
     const effectiveRateAll = ((totalTax + juuminTax) / totalGrossIncome * 100).toFixed(1);
-    rows.push(`<tr><td colspan="2" style="font-size:10px;color:var(--text3);letter-spacing:.08em;padding-top:16px;padding-bottom:4px;">▍ 参考値：実効税率</td></tr>`);
+    rows.push(`<tr><td colspan="2" style="font-size:12px;color:var(--text2);letter-spacing:.08em;padding-top:16px;padding-bottom:4px;">▍ 参考値：実効税率</td></tr>`);
     rows.push(`<tr><td style="color:var(--text2);">所得税の実効税率（参考値）</td><td style="font-family:'DM Mono',monospace;text-align:right;">${effectiveRate}%</td></tr>`);
     rows.push(`<tr><td style="color:var(--text2);">所得税＋住民税の実効税率（参考値・概算）</td><td style="font-family:'DM Mono',monospace;text-align:right;color:var(--accent);">${effectiveRateAll}%</td></tr>`);
-    rows.push(`<tr class="sub-row"><td colspan="2" style="font-size:10px;color:var(--text3);padding-top:4px;">※ 総所得金額（給与収入＋事業売上＋雑収入）に対する比率の参考値です。</td></tr>`);
+    rows.push(`<tr class="sub-row"><td colspan="2" style="font-size:12px;color:var(--text2);padding-top:4px;">※ 総所得金額（給与収入＋事業売上＋雑収入）に対する比率の参考値です。</td></tr>`);
   }
 
   document.getElementById('tax-result-body').innerHTML = rows.join('');
@@ -2147,7 +2147,7 @@ function openExpModal() {
       <input type="checkbox" id="ec-${cat}" onchange="calcExpTotal()">
       <label for="ec-${cat}">${cat}</label>
       <span class="exp-check-amt">${fmt(amt)}</span>
-      <span style="font-size:10px;color:var(--text3);min-width:50px;text-align:right;" data-amt="${amt}"></span>
+      <span style="font-size:12px;color:var(--text2);min-width:50px;text-align:right;" data-amt="${amt}"></span>
     </div>`).join('');
   document.getElementById('exp-modal-total').textContent = '¥0';
   document.getElementById('exp-modal').classList.add('open');
