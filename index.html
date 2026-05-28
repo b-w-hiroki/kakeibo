@@ -7,17 +7,33 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+/* テーマのちらつき防止：描画前に保存済みテーマを適用 */
+try { if (localStorage.getItem('kakeibo_theme') === 'light') document.documentElement.setAttribute('data-theme','light'); } catch(e) {}
+</script>
 <style>
 :root {
   --bg:#0f0f0f;--surface:#181818;--surface2:#222;--border:rgba(255,255,255,.08);
   --border2:rgba(255,255,255,.14);--text:#f5f3ee;--text2:#cfcbc4;--text3:#938f89;
   --inc:#4ade80;--inc-dim:rgba(74,222,128,.12);--exp:#f87171;--exp-dim:rgba(248,113,113,.12);
   --accent:#e8d5b0;--accent-dim:rgba(232,213,176,.1);--asset:#38bdf8;--asset-dim:rgba(56,189,248,.1);
+  --purple:#a78bfa;--header-bg:rgba(15,15,15,.92);--opt-bg:#222;
   --r:12px;--rs:8px;
 }
+:root[data-theme="light"] {
+  --bg:#f4f2ed;--surface:#ffffff;--surface2:#ebe7df;--border:rgba(0,0,0,.10);
+  --border2:rgba(0,0,0,.18);--text:#1c1a17;--text2:#4f4a43;--text3:#7a746b;
+  --inc:#15803d;--inc-dim:rgba(21,128,61,.12);--exp:#dc2626;--exp-dim:rgba(220,38,38,.10);
+  --accent:#9c6f2e;--accent-dim:rgba(156,111,46,.12);--asset:#0284c7;--asset-dim:rgba(2,132,199,.1);
+  --purple:#7c3aed;--header-bg:rgba(244,242,237,.92);--opt-bg:#fff;
+}
 *{box-sizing:border-box;margin:0;padding:0;}
-body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;font-weight:400;min-height:100vh;line-height:1.65;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
-header{border-bottom:.5px solid var(--border);padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:rgba(15,15,15,.92);backdrop-filter:blur(12px);z-index:100;}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;font-weight:400;min-height:100vh;line-height:1.65;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;transition:background .2s,color .2s;}
+header{border-bottom:.5px solid var(--border);padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--header-bg);backdrop-filter:blur(12px);z-index:100;gap:12px;}
+.header-actions{display:flex;align-items:center;gap:8px;}
+.icon-btn{background:none;border:.5px solid var(--border2);border-radius:var(--rs);color:var(--text2);cursor:pointer;padding:6px 12px;font-size:13px;font-family:inherit;font-weight:500;display:inline-flex;align-items:center;gap:6px;transition:background .15s,color .15s,border-color .15s;white-space:nowrap;}
+.icon-btn:hover{background:var(--accent-dim);color:var(--accent);border-color:rgba(156,111,46,.35);}
+:root:not([data-theme="light"]) .icon-btn:hover{border-color:rgba(232,213,176,.35);}
 .logo{font-family:'DM Mono',monospace;font-size:14px;letter-spacing:.15em;color:var(--accent);text-transform:uppercase;font-weight:500;}
 .header-meta{font-size:13px;color:var(--text2);}
 .tab-bar{display:flex;gap:2px;padding:1.25rem 1.5rem 0;border-bottom:.5px solid var(--border);overflow-x:auto;scrollbar-width:none;}
@@ -54,7 +70,10 @@ header{border-bottom:.5px solid var(--border);padding:1rem 1.5rem;display:flex;a
   header{padding:.75rem 1rem;}
   .logo{font-size:12px;}
   .tab{padding:.5rem .9rem;font-size:13px;}
+  .header-meta{display:none;}
+  .icon-btn{padding:6px 9px;font-size:12px;}
 }
+@media(max-width:700px){.header-meta{display:none;}}
 
 /* CARD */
 .card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:1.25rem 1.5rem;}
@@ -65,7 +84,7 @@ header{border-bottom:.5px solid var(--border);padding:1rem 1.5rem;display:flex;a
 .filter-label{font-size:12px;color:var(--text2);font-weight:500;}
 select,input[type=text],input[type=number]{background:var(--surface2);border:.5px solid var(--border2);border-radius:var(--rs);color:var(--text);font-family:inherit;font-size:14px;padding:7px 12px;outline:none;transition:border-color .15s;font-weight:400;}
 select:focus,input:focus{border-color:rgba(232,213,176,.4);}
-select option{background:#222;}
+select option{background:var(--opt-bg);color:var(--text);}
 
 /* TABLE */
 .table-wrap{overflow-x:auto;}
@@ -264,7 +283,11 @@ tr:hover td{background:var(--surface2);}
 
 <header>
   <div class="logo">収支ダッシュボード</div>
-  <div class="header-meta" id="header-meta">データなし</div>
+  <div class="header-actions">
+    <span class="header-meta" id="header-meta">データなし</span>
+    <button class="icon-btn" onclick="openDataModal()" title="データのバックアップ・復元">💾 データ</button>
+    <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="ライト/ダーク切替">🌙 ダーク</button>
+  </div>
 </header>
 
 <div class="tab-bar">
@@ -302,10 +325,10 @@ tr:hover td{background:var(--surface2);}
   <div id="dash-content" style="display:none">
     <div class="filter-bar" style="margin-bottom:1.5rem;">
       <span class="filter-label">期間：</span>
-      <select id="df-year"><option value="">全年</option></select>
-      <select id="df-from"><option value="">開始月</option></select>
-      <select id="df-to"><option value="">終了月</option></select>
-      <button class="action-btn" onclick="clearDashFilter()">リセット</button>
+      <select id="df-from"><option value="">開始年月</option></select>
+      <span class="filter-label" style="opacity:.7;">〜</span>
+      <select id="df-to"><option value="">終了年月</option></select>
+      <button class="action-btn" onclick="clearDashFilter()">全期間</button>
       <button class="action-btn" onclick="openBudgetModal()" style="margin-left:auto;">予算設定</button>
       <button class="action-btn no-print" onclick="openFixedModal()">固定費設定</button>
       <button class="action-btn no-print" onclick="printDashboard()" style="color:var(--accent);border-color:rgba(196,181,253,.3);">🖨 月次レポート</button>
@@ -375,7 +398,7 @@ tr:hover td{background:var(--surface2);}
     <!-- Asset History Section (shown when assetHistory is loaded) -->
     <div id="dash-ah-section" style="display:none">
       <div class="metrics metrics-4" style="margin-bottom:1rem;">
-        <div class="metric"><div class="metric-label">現在の総資産</div><div class="metric-value" style="color:#a78bfa;" id="ah-total">¥0</div><div class="metric-sub" id="ah-total-sub"></div></div>
+        <div class="metric"><div class="metric-label">現在の総資産</div><div class="metric-value" style="color:var(--purple);" id="ah-total">¥0</div><div class="metric-sub" id="ah-total-sub"></div></div>
         <div class="metric"><div class="metric-label">前月比</div><div class="metric-value" id="ah-mom">—</div><div class="metric-sub" id="ah-mom-sub"></div></div>
         <div class="metric"><div class="metric-label">年初比（今年）</div><div class="metric-value" id="ah-yoy">—</div><div class="metric-sub" id="ah-yoy-sub"></div></div>
         <div class="metric"><div class="metric-label">照合ずれ（直近月）</div><div class="metric-value" id="ah-gap">—</div><div class="metric-sub" id="ah-gap-sub"></div></div>
@@ -398,10 +421,11 @@ tr:hover td{background:var(--surface2);}
         </div>
         <div style="overflow-x:auto;"><table class="recon-table" id="dash-recon-table">
           <thead><tr>
-            <th>月</th><th>状態</th>
+            <th>月</th>
+            <th title="資産の増減と収支差引のズレ判定。OK=5万円未満／要確認=5万〜30万円／要調査=30万円以上。各行にマウスを乗せると要因が表示されます" style="cursor:help;">状態</th>
             <th>期末資産</th><th>資産増減</th>
             <th>収入</th><th>支出</th><th>収支差引</th>
-            <th>ずれ</th>
+            <th title="資産増減 − 収支差引。投資損益や記録漏れ等で発生します" style="cursor:help;">ずれ</th>
           </tr></thead>
           <tbody id="dash-recon-body"></tbody>
         </table></div>
@@ -431,7 +455,7 @@ tr:hover td{background:var(--surface2);}
     </div>
   </div>
   <div class="drop-zone ah-zone" id="asset-hist-dropzone" onclick="document.getElementById('assethistfile').click()" style="border-color:rgba(167,139,250,.3);">
-    <div class="drop-title" style="color:#a78bfa;">資産推移CSVをここにドロップ（任意）</div>
+    <div class="drop-title" style="color:var(--purple);">資産推移CSVをここにドロップ（任意）</div>
     <div class="drop-sub">マネーフォワードME → 資産 → 資産推移 → 月次 → CSVダウンロード</div>
     <input type="file" id="assethistfile" accept=".csv" style="display:none">
   </div>
@@ -908,6 +932,17 @@ function showToast(msg, type = 'info', duration = 3500) {
 const fmt = n => '¥' + Math.round(Math.abs(n)).toLocaleString('ja-JP');
 const fmtSgn = n => (n >= 0 ? '+' : '-') + fmt(n);
 
+/* チャートの軸・グリッド色をテーマに追従させる */
+function chartColors() {
+  const light = document.documentElement.getAttribute('data-theme') === 'light';
+  return {
+    tick:        light ? '#5f584e' : '#b3aea6',
+    gridX:       light ? 'rgba(0,0,0,.05)'  : 'rgba(255,255,255,.03)',
+    gridY:       light ? 'rgba(0,0,0,.08)'  : 'rgba(255,255,255,.05)',
+    sliceBorder: light ? '#ffffff' : '#181818',
+  };
+}
+
 /* TABS */
 function switchTab(id) {
   ['dashboard','csv','manual','tax'].forEach((t,i) => document.querySelectorAll('.tab')[i].classList.toggle('active', t===id));
@@ -1171,8 +1206,8 @@ function renderBarChart(canvasId, labels, inc, exp, ref) {
       responsive:true, maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.raw)}`}}},
       scales:{
-        x:{ticks:{color:'#5c5956',font:{size:10}},grid:{color:'rgba(255,255,255,.03)'}},
-        y:{ticks:{color:'#5c5956',font:{size:10},callback:v=>'¥'+(v/10000).toFixed(0)+'万'},grid:{color:'rgba(255,255,255,.05)'}},
+        x:{ticks:{color:chartColors().tick,font:{size:11}},grid:{color:chartColors().gridX}},
+        y:{ticks:{color:chartColors().tick,font:{size:11},callback:v=>'¥'+(v/10000).toFixed(0)+'万'},grid:{color:chartColors().gridY}},
       }
     }
   });
@@ -1195,8 +1230,8 @@ function renderLineChart(canvasId, labels, balances, ref) {
       responsive:true, maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`収支: ${fmtSgn(c.raw)}`}}},
       scales:{
-        x:{ticks:{color:'#5c5956',font:{size:10}},grid:{color:'rgba(255,255,255,.03)'}},
-        y:{ticks:{color:'#5c5956',font:{size:10},callback:v=>'¥'+(v/10000).toFixed(0)+'万'},grid:{color:'rgba(255,255,255,.05)'}},
+        x:{ticks:{color:chartColors().tick,font:{size:11}},grid:{color:chartColors().gridX}},
+        y:{ticks:{color:chartColors().tick,font:{size:11},callback:v=>'¥'+(v/10000).toFixed(0)+'万'},grid:{color:chartColors().gridY}},
       }
     }
   });
@@ -1365,7 +1400,7 @@ function renderAssetChart(assets) {
   const total = assets.reduce((s,a)=>s+a.amt,0)||1;
   assetChart = new Chart(document.getElementById('dash-asset-chart').getContext('2d'), {
     type:'doughnut',
-    data:{ labels:entries.map(e=>e[0]), datasets:[{data:entries.map(e=>e[1]),backgroundColor:paletteAsset,borderColor:'#181818',borderWidth:2}] },
+    data:{ labels:entries.map(e=>e[0]), datasets:[{data:entries.map(e=>e[1]),backgroundColor:paletteAsset,borderColor:chartColors().sliceBorder,borderWidth:2}] },
     options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${fmt(c.raw)}`}}} }
   });
   document.getElementById('dash-asset-list').innerHTML = entries.map(([k,v],i)=>`
@@ -1473,29 +1508,27 @@ function initDashFilter() {
   const all = allCSV();
   if (!all.length) return;
   const months = [...new Set(all.map(r=>r.month).filter(Boolean))].sort();
-  const years  = [...new Set(months.map(m=>m.slice(0,4)))];
-  const yrSel  = document.getElementById('df-year');
-  const prevYr = yrSel.value;
-  yrSel.innerHTML = '<option value="">全年</option>' + years.map(y=>`<option value="${y}">${y}年</option>`).join('');
-  if (prevYr) yrSel.value = prevYr;
   const fromSel = document.getElementById('df-from');
   const toSel   = document.getElementById('df-to');
   const prevFrom = fromSel.value, prevTo = toSel.value;
-  fromSel.innerHTML = '<option value="">開始月</option>' + months.map(m=>`<option value="${m}">${m}</option>`).join('');
-  toSel.innerHTML   = '<option value="">終了月</option>' + [...months].reverse().map(m=>`<option value="${m}">${m}</option>`).join('');
-  if (prevFrom) fromSel.value = prevFrom;
-  if (prevTo)   toSel.value   = prevTo;
+  // ラベルは「YYYY年MM月」で読みやすく、値は内部表現の "YYYY/MM"
+  const label = m => `${m.slice(0,4)}年${m.slice(5,7)}月`;
+  fromSel.innerHTML = '<option value="">開始年月</option>' + months.map(m=>`<option value="${m}">${label(m)}</option>`).join('');
+  toSel.innerHTML   = '<option value="">終了年月</option>' + [...months].reverse().map(m=>`<option value="${m}">${label(m)}</option>`).join('');
+  // 選択範囲が現存する月に残っていれば復元
+  if (prevFrom && months.includes(prevFrom)) fromSel.value = prevFrom;
+  if (prevTo   && months.includes(prevTo))   toSel.value   = prevTo;
 }
 function clearDashFilter() {
-  ['df-year','df-from','df-to'].forEach(id=>document.getElementById(id).value='');
+  ['df-from','df-to'].forEach(id=>document.getElementById(id).value='');
   renderDashboard();
 }
-['df-year','df-from','df-to'].forEach(id=>document.getElementById(id).addEventListener('change', ()=>{
-  const yr = document.getElementById('df-year').value;
-  if (yr && id==='df-year') {
-    const all = allCSV();
-    const ms = [...new Set(all.map(r=>r.month).filter(Boolean))].sort().filter(m=>m.startsWith(yr));
-    if (ms.length) { document.getElementById('df-from').value=ms[0]; document.getElementById('df-to').value=ms[ms.length-1]; }
+['df-from','df-to'].forEach(id=>document.getElementById(id).addEventListener('change', ()=>{
+  // From > To になったら自動で入れ替えて整合を取る
+  const fromSel = document.getElementById('df-from');
+  const toSel   = document.getElementById('df-to');
+  if (fromSel.value && toSel.value && fromSel.value > toSel.value) {
+    const t = fromSel.value; fromSel.value = toSel.value; toSel.value = t;
   }
   renderDashboard();
 }));
@@ -1745,7 +1778,7 @@ function renderAssetHistSummary() {
   const latest = assetHistory[assetHistory.length-1];
   el.innerHTML = `
     <div class="file-summary-bar" style="border-color:rgba(167,139,250,.3);">
-      <span style="font-size:13px;color:#a78bfa;">◈</span>
+      <span style="font-size:13px;color:var(--purple);">◈</span>
       <span class="file-summary-text"><strong>資産推移CSV読み込み済み</strong>　${assetHistory.length}ヶ月分　最新: ${latest.month}　総資産 ${fmt(latest.total)}</span>
       <button class="action-btn" onclick="clearAssetHist()">削除</button>
     </div>`;
@@ -1795,8 +1828,8 @@ function renderAssetHist() {
       responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.raw)}`}}},
       scales:{
-        x:{ticks:{color:'#5c5956',font:{size:10},maxRotation:0,autoSkip:true,maxTicksLimit:18},grid:{color:'rgba(255,255,255,.03)'}},
-        y:{ticks:{color:'#5c5956',font:{size:10},callback:v=>'¥'+(v/10000000).toFixed(0)+'千万'},grid:{color:'rgba(255,255,255,.05)'}},
+        x:{ticks:{color:chartColors().tick,font:{size:11},maxRotation:0,autoSkip:true,maxTicksLimit:18},grid:{color:chartColors().gridX}},
+        y:{ticks:{color:chartColors().tick,font:{size:11},callback:v=>'¥'+(v/10000000).toFixed(0)+'千万'},grid:{color:chartColors().gridY}},
       }
     }
   });
@@ -1804,6 +1837,26 @@ function renderAssetHist() {
   renderRecon();
 }
 
+/* 照合ステータスの理由文（マウスオーバー用） */
+function reconTooltip(month, gap, assetChg, netInc) {
+  if (gap === null) {
+    return `${month}：前月の資産データか収支データが不足しているため判定できません`;
+  }
+  const abs = Math.abs(gap);
+  const dir = gap >= 0 ? '資産が収支差引より多く増えています' : '資産が収支差引より少なく増えています（または減少）';
+  let head;
+  if (abs < 50000)       head = `OK：資産の増減と収支の差引がほぼ一致（ズレ ${fmt(abs)}・5万円未満）`;
+  else if (abs < 300000) head = `要確認：ズレ ${fmt(abs)}（5万〜30万円）。${dir}`;
+  else                   head = `要調査：ズレ ${fmt(abs)}（30万円以上）。${dir}`;
+  const causes = abs < 50000 ? '' :
+    '【主な要因】 ' +
+    '・投資商品の評価損益（含み益・含み損） ' +
+    '・CSVに未記録の入出金や現金移動 ' +
+    '・ポイント／給与天引き等の資産反映 ' +
+    '・口座残高の手動入力と実残高の差';
+  const detail = `期末資産の増減 ${assetChg!==null?fmtSgn(assetChg):'—'} − 収支差引 ${netInc!==null?fmtSgn(netInc):'—'} = ズレ ${fmtSgn(gap)}`;
+  return `${head}\n${detail}${causes ? '\n'+causes : ''}`;
+}
 function renderRecon() {
   const all = allCSV();
   const tbody = document.getElementById('dash-recon-body');
@@ -1836,16 +1889,17 @@ function renderRecon() {
     const gapCls = gap===null?'' : Math.abs(gap)<50000?'recon-ok':Math.abs(gap)<300000?'recon-warn':'recon-bad';
     const dot    = gap===null?'' : `<span class="recon-status" style="background:${gapCls==='recon-ok'?'#4ade80':gapCls==='recon-warn'?'#e8d5b0':'#f87171'};"></span>`;
     const statusTxt = gap===null?'—':Math.abs(gap)<50000?'OK':Math.abs(gap)<300000?'要確認':'要調査';
+    const tip = reconTooltip(m, gap, assetChg, netInc);
 
     rows.push(`<tr>
       <td>${m}</td>
-      <td class="${gapCls}">${dot}${statusTxt}</td>
+      <td class="${gapCls}" title="${tip}" style="cursor:help;">${dot}${statusTxt}</td>
       <td>${fmt(assetNow)}</td>
       <td>${assetChg!==null?(assetChg>=0?'+':'-')+fmt(assetChg):'—'}</td>
       <td>${tx?fmt(tx.inc):'—'}</td>
       <td>${tx?fmt(tx.exp):'—'}</td>
       <td>${netInc!==null?(netInc>=0?'+':'-')+fmt(netInc):'—'}</td>
-      <td class="${gapCls}">${gap!==null?(gap>=0?'+':'-')+fmt(gap):'—'}</td>
+      <td class="${gapCls}" title="${tip}" style="cursor:help;">${gap!==null?(gap>=0?'+':'-')+fmt(gap):'—'}</td>
     </tr>`);
   });
   tbody.innerHTML = rows.reverse().join(''); // newest first
@@ -2257,7 +2311,98 @@ document.getElementById('dc-dep').addEventListener('change', () => {
   renderTaxResult();
 });
 
+/* ===== テーマ切替 ===== */
+function applyThemeButton() {
+  const light = document.documentElement.getAttribute('data-theme') === 'light';
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.textContent = light ? '☀ ライト' : '🌙 ダーク';
+}
+function rerenderCharts() {
+  // テーマに合わせてチャートを再描画
+  renderDashboard();
+  if (document.getElementById('csv-summary').style.display !== 'none' && Object.keys(csvFileMap).length) {
+    applyCSVFilter();
+  }
+}
+function setTheme(theme) {
+  if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+  else document.documentElement.removeAttribute('data-theme');
+  try { localStorage.setItem('kakeibo_theme', theme); } catch(e) {}
+  applyThemeButton();
+  rerenderCharts();
+}
+function toggleTheme() {
+  const light = document.documentElement.getAttribute('data-theme') === 'light';
+  setTheme(light ? 'dark' : 'light');
+}
+
+/* ===== データのバックアップ / 復元 ===== */
+const BACKUP_KEYS = ['kakeibo_csv','kakeibo_assets','kakeibo_ah','kakeibo_inc','kakeibo_exp','kakeibo_nextId','kakeibo_budget','kakeibo_cat_aliases','kakeibo_fixed_cats','kakeibo_theme'];
+function openDataModal() {
+  // 現在のデータ概要を表示
+  const txCount = Object.values(csvFileMap).reduce((s,a)=>s+a.length,0);
+  const fileCount = Object.keys(csvFileMap).length;
+  const summary = `CSV ${fileCount}ファイル / 取引 ${txCount}件・資産推移 ${assetHistory.length}ヶ月・手動入力 ${manualInc.length+manualExp.length}行`;
+  document.getElementById('data-modal-summary').textContent = summary;
+  document.getElementById('data-modal').classList.add('open');
+}
+function closeDataModal() { document.getElementById('data-modal').classList.remove('open'); }
+function exportBackup() {
+  const data = { _app:'kakeibo', _version:1, _exportedAt:new Date().toISOString(), store:{} };
+  BACKUP_KEYS.forEach(k => { const v = localStorage.getItem(k); if (v !== null) data.store[k] = v; });
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const d = new Date();
+  const stamp = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  a.href = url; a.download = `kakeibo-backup-${stamp}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('バックアップを書き出しました', 'success');
+}
+function importBackup(files) {
+  const file = files && files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      const store = (data && data.store) ? data.store : null;
+      if (!store || data._app !== 'kakeibo') {
+        showToast('このファイルは収支ダッシュボードのバックアップではありません', 'error');
+        return;
+      }
+      if (!confirm('現在のデータをバックアップの内容で上書きします。よろしいですか？')) return;
+      // 既存のアプリデータを消してから復元（部分的な不整合を防ぐ）
+      BACKUP_KEYS.forEach(k => localStorage.removeItem(k));
+      Object.entries(store).forEach(([k,v]) => { if (BACKUP_KEYS.includes(k)) localStorage.setItem(k, v); });
+      // 状態を読み直して全再描画
+      loadStorage();
+      initTheme();
+      renderManual();
+      renderAssetRows();
+      renderChips();
+      refreshCSV();
+      renderAssetHistSummary();
+      renderDashboard();
+      closeDataModal();
+      showToast('バックアップから復元しました', 'success');
+    } catch(e) {
+      showToast('ファイルの読み込みに失敗しました（JSON形式を確認してください）', 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
 /* INIT */
+function initTheme() {
+  let theme = 'dark';
+  try { theme = localStorage.getItem('kakeibo_theme') || 'dark'; } catch(e) {}
+  if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+  else document.documentElement.removeAttribute('data-theme');
+  applyThemeButton();
+}
+initTheme();
 loadStorage();
 renderManual();
 renderAssetRows();
@@ -2269,6 +2414,10 @@ document.addEventListener('DOMContentLoaded', () => {
   if (bm) bm.onclick = e => { if (e.target === bm) closeBudgetModal(); };
   const fm = document.getElementById('fixed-modal');
   if (fm) fm.onclick = e => { if (e.target === fm) closeFixedModal(); };
+  const dm = document.getElementById('data-modal');
+  if (dm) dm.onclick = e => { if (e.target === dm) closeDataModal(); };
+  const bf = document.getElementById('backup-file');
+  if (bf) bf.onchange = e => { if (e.target.files.length) importBackup(e.target.files); e.target.value=''; };
 });
 </script>
 <div class="modal-bg" id="budget-modal">
@@ -2301,6 +2450,37 @@ document.addEventListener('DOMContentLoaded', () => {
       <div style="margin-top:1rem;display:flex;justify-content:flex-end;gap:8px;">
         <button class="action-btn" onclick="closeFixedModal()">キャンセル</button>
         <button class="action-btn" style="color:var(--accent);border-color:rgba(196,181,253,.3);" onclick="saveFixedCats()">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-bg" id="data-modal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-head">
+      <div class="modal-title">データのバックアップ・復元</div>
+      <button class="modal-close" onclick="closeDataModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="file-summary-bar" style="margin-bottom:1.25rem;">
+        <span class="file-summary-icon">📦</span>
+        <span class="file-summary-text" id="data-modal-summary">—</span>
+      </div>
+
+      <div style="margin-bottom:1.25rem;">
+        <div class="section-label" style="margin-bottom:6px;">バックアップ書き出し</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:10px;line-height:1.6;">
+          すべてのデータ（CSV・手動入力・資産・予算・設定・テーマ）を1つのJSONファイルに保存します。別の端末やブラウザへの引っ越し、定期バックアップにどうぞ。
+        </div>
+        <button class="action-btn" onclick="exportBackup()">💾 バックアップを書き出す</button>
+      </div>
+
+      <div style="border-top:.5px solid var(--border);padding-top:1.25rem;">
+        <div class="section-label" style="margin-bottom:6px;">バックアップから復元</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:10px;line-height:1.6;">
+          書き出したJSONファイルを読み込み、データを復元します。<strong style="color:var(--exp);">現在のデータは上書きされます。</strong>
+        </div>
+        <button class="action-btn" onclick="document.getElementById('backup-file').click()">📂 ファイルを選んで復元</button>
+        <input type="file" id="backup-file" accept=".json,application/json" style="display:none">
       </div>
     </div>
   </div>

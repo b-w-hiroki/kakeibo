@@ -29,10 +29,15 @@ GitHub Pages 設定: `master` ブランチの `/`（root）を公開。`index.ht
 
 | タブ | id | 主要機能 |
 |------|----|---------|
-| ダッシュボード | `tab-dashboard` | 期間フィルタ、月次収支グラフ（棒＋折れ線）、カテゴリランキング、固定/変動費 KPI、前年同月比、資産推移、予算管理 |
+| ダッシュボード | `tab-dashboard` | 期間フィルタ（開始年月〜終了年月の自由指定、年跨ぎ可）、月次収支グラフ（棒＋折れ線）、カテゴリランキング、固定/変動費 KPI、前年同月比、資産推移、予算管理、収支照合チェック（ステータスはマウスオーバーで要因表示） |
 | CSV 取り込み | `tab-csv` | マネーフォワード CSV のドロップ読み込み、ファイル管理、月別フィルタ |
 | 手動入力 | `tab-manual` | 収入・支出を行単位で入力 |
 | 確定申告 | `tab-tax` | 給与所得控除・各種控除・所得税自動計算、CSV から事業所得/医療費を取り込み |
+
+### 全体機能（タブ非依存）
+
+- **テーマ切替**: ヘッダーの「🌙/☀」ボタンでライト/ダーク切替。`data-theme="light"` を `<html>` に付与し CSS 変数を切替。`<head>` のインラインスクリプトで描画前に適用してちらつきを防止。チャート軸色は `chartColors()` がテーマ追従。
+- **データのバックアップ/復元**: ヘッダーの「💾 データ」ボタン → `data-modal`。`exportBackup()` が全 `kakeibo_*` キーを 1 つの JSON（`{_app,_version,store}`）に書き出し、`importBackup()` が読み込んで全キーを上書き復元（確認ダイアログあり）。
 
 ## マネーフォワード ME CSV 仕様
 
@@ -74,6 +79,9 @@ GitHub Pages 設定: `master` ブランチの `/`（root）を公開。`index.ht
 | `budgetMap` | カテゴリ別予算 `{cat: 金額}` | `kakeibo_budget` |
 | `categoryAliases` | カテゴリ統合エイリアス `{元: 統合先}` | `kakeibo_cat_aliases` |
 | `fixedCats` | 固定費カテゴリ `Set` | `kakeibo_fixed_cats`（配列で保存） |
+| （テーマ） | `light` / `dark` の選択 | `kakeibo_theme` |
+
+バックアップ対象キーは JS 側の `BACKUP_KEYS` 配列で一元管理。localStorage キーを追加したらここにも足すこと。
 
 書き込みは `debouncedSave`（400ms）。同期書き込みが必要な箇所だけ `saveStorage()` を直接呼ぶ。
 
