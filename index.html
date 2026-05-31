@@ -494,7 +494,12 @@ tr:hover td{background:var(--surface2);}
       <span style="font-size:11px;color:var(--text3);">ダッシュボードの資産内訳グラフに使用します</span>
     </div>
     <div id="asset-rows"></div>
-    <button class="add-btn" onclick="addAssetRow()">+ 口座を追加</button>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <button class="add-btn" onclick="addAssetRow()">+ 口座を追加</button>
+      <button class="add-btn" onclick="document.getElementById('assetbalancefile').click()">CSVから取り込み</button>
+      <span style="font-size:11px;color:var(--text3);">「口座名, 残高」形式のCSVに対応</span>
+    </div>
+    <input type="file" id="assetbalancefile" accept=".csv" style="display:none" onchange="if(this.files.length)importAssetsFromCSV(this.files);this.value='';">
   </div>
   <div class="err" id="err-msg"></div>
 
@@ -1083,6 +1088,124 @@ function updAssetRow(id, field, val) {
   if (!row) return;
   row[field] = field === 'amt' ? (parseFloat(val)||0) : val;
   debouncedSave();
+}
+
+/* 口座・資産残高を汎用CSV（口座名, 残高）から取り込む */
+function importAssetsFromCSV(files) {
+  const file = files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    let text;
+    try { text = decodeCSV(ev.target.result); }
+    catch (e) { showToast('ファイルを読み込めませんでした。', 'error', 5000); return; }
+    const grid = text.split(/\r?\n/).filter(l => l.trim()).map(splitCSVLine);
+    const parsed = parseAssetBalanceCSV(grid);
+    if (!parsed.length) {
+      showToast('口座名と残高の列を認識できませんでした。「口座名, 残高」形式のCSVをご利用ください。', 'error', 6000);
+      return;
+    }
+    openAssetImportModal(parsed);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* 行列から「名前列」「金額列」を推定して {name, amt} を抽出 */
+function parseAssetBalanceCSV(rows) {
+  const clean = s => (s == null ? '' : String(s)).replace(/^﻿/, '').replace(/^"|"$/g, '').trim();
+  const toNum = s => {
+    const t = clean(s).replace(/[,\s¥円]/g, '');
+    return /^-?\d+(\.\d+)?$/.test(t) ? parseFloat(t) : null;
+  };
+  const grid = (rows || []).map(r => (r || []).map(clean)).filter(r => r.some(c => c !== ''));
+  if (!grid.length) return [];
+  const ncol = Math.max(...grid.map(r => r.length));
+  // 各列を走査：数値が最も多い列＝金額列、文字が最も多い列＝名前列
+  // 金額列＝数値の合計絶対値が最大の列（連番/No.列より残高列が勝つ）、名前列＝文字が最も多い列
+  let amtIdx = -1, amtSum = -1, nameIdx = -1, nameScore = -1;
+  for (let c = 0; c < ncol; c++) {
+    let nums = 0, sum = 0, texts = 0;
+    grid.forEach(r => {
+      const v = r[c];
+      if (v == null || v === '') return;
+      const n = toNum(v);
+      if (n !== null) { nums++; sum += Math.abs(n); } else texts++;
+    });
+    if (nums > 0 && sum > amtSum) { amtSum = sum; amtIdx = c; }
+    if (texts > nameScore) { nameScore = texts; nameIdx = c; }
+  }
+  if (amtIdx < 0) return [];
+  if (amtIdx === nameIdx) nameIdx = amtIdx === 0 ? 1 : 0;
+  // 先頭行の金額セルが数値でなければヘッダー行とみなしてスキップ
+  const start = (grid[0] && toNum(grid[0][amtIdx]) === null) ? 1 : 0;
+  const out = [];
+  for (let i = start; i < grid.length; i++) {
+    const r = grid[i];
+    const amt = toNum(r[amtIdx]);
+    if (amt === null) continue;
+    out.push({ name: clean(r[nameIdx]) || ('口座' + (out.length + 1)), amt: Math.round(amt) });
+  }
+  return out;
+}
+
+let assetImportParsed = [];
+function openAssetImportModal(parsed) {
+  assetImportParsed = parsed;
+  let modal = document.getElementById('asset-import-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.className = 'modal-bg';
+    modal.id = 'asset-import-modal';
+    modal.innerHTML =
+      '<div class="modal"><div class="modal-head">' +
+        '<div class="modal-title">CSVから口座・残高を取り込む</div>' +
+        '<button class="modal-close" onclick="closeAssetImportModal()">&times;</button>' +
+      '</div><div class="modal-body">' +
+        '<div style="font-size:13px;color:var(--text2);margin-bottom:.75rem;">取り込む口座を選択してください。チェックした口座が「口座・資産残高」に追加されます。</div>' +
+        '<div class="filter-bar" style="padding:0 0 .75rem;">' +
+          '<button class="action-btn" onclick="assetImportToggleAll(true)">全選択</button>' +
+          '<button class="action-btn" onclick="assetImportToggleAll(false)">全解除</button>' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);margin-left:auto;cursor:pointer;"><input type="checkbox" id="asset-import-replace" style="width:15px;height:15px;accent-color:var(--accent);">既存の口座を置き換える</label>' +
+        '</div>' +
+        '<div id="asset-import-list"></div>' +
+        '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:1rem;">' +
+          '<button class="action-btn" onclick="closeAssetImportModal()">キャンセル</button>' +
+          '<button class="add-btn" style="margin-top:0;" onclick="commitAssetImport()">取り込む</button>' +
+        '</div>' +
+      '</div></div>';
+    document.body.appendChild(modal);
+  }
+  renderAssetImportList();
+  modal.classList.add('open');
+}
+function renderAssetImportList() {
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  document.getElementById('asset-import-list').innerHTML = assetImportParsed.map((a, i) =>
+    '<label class="exp-check-item" style="cursor:pointer;">' +
+      '<input type="checkbox" class="asset-import-cb" data-i="' + i + '" checked>' +
+      '<span style="flex:1;">' + esc(a.name) + '</span>' +
+      '<span class="exp-check-amt">' + fmt(a.amt) + '</span>' +
+    '</label>').join('');
+}
+function assetImportToggleAll(v) {
+  document.querySelectorAll('.asset-import-cb').forEach(cb => cb.checked = v);
+}
+function closeAssetImportModal() {
+  const m = document.getElementById('asset-import-modal');
+  if (m) m.classList.remove('open');
+}
+function commitAssetImport() {
+  const sel = [];
+  document.querySelectorAll('.asset-import-cb').forEach(cb => { if (cb.checked) sel.push(assetImportParsed[+cb.dataset.i]); });
+  if (!sel.length) { showToast('取り込む口座が選択されていません。', 'info'); return; }
+  const replace = document.getElementById('asset-import-replace');
+  if (replace && replace.checked) manualAssets = [];
+  sel.forEach(a => manualAssets.push({ id: nextId++, name: a.name, amt: a.amt }));
+  saveStorage();
+  renderAssetRows();
+  renderDashboard();
+  closeAssetImportModal();
+  showToast(sel.length + '件の口座を取り込みました。', 'success');
 }
 
 /* CSV type auto-detection: checks if first data line looks like asset history */
