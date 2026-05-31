@@ -1099,8 +1099,8 @@ function importAssetsFromCSV(files) {
     let text;
     try { text = decodeCSV(ev.target.result); }
     catch (e) { showToast('ファイルを読み込めませんでした。', 'error', 5000); return; }
-    const { headers, rows } = parseCSV(text);
-    const parsed = parseAssetBalanceCSV([headers, ...rows]);
+    const grid = text.split(/\r?\n/).filter(l => l.trim()).map(splitCSVLine);
+    const parsed = parseAssetBalanceCSV(grid);
     if (!parsed.length) {
       showToast('口座名と残高の列を認識できませんでした。「口座名, 残高」形式のCSVをご利用ください。', 'error', 6000);
       return;
