@@ -251,6 +251,13 @@ tr:hover td{background:var(--surface2);}
 .recon-table td:nth-child(2){text-align:left;}
 .recon-table tr:hover td{background:var(--surface2);}
 .recon-ok{color:var(--inc);font-weight:600;}.recon-warn{color:var(--accent);font-weight:600;}.recon-bad{color:var(--exp);font-weight:600;}
+.cp-table{width:100%;border-collapse:collapse;font-size:13px;}
+.cp-table th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);padding:8px 10px;border-bottom:.5px solid var(--border);text-align:left;font-weight:600;position:sticky;top:0;background:var(--surface);z-index:1;}
+.cp-table td{padding:9px 10px;border-bottom:.5px solid var(--border);color:var(--text);font-weight:400;}
+.cp-table td.cp-num{font-family:'DM Mono',monospace;text-align:right;font-weight:500;}
+.cp-table tr:hover td{background:var(--surface2);}
+.cp-table .cp-count{font-size:11px;color:var(--text2);font-weight:400;margin-left:6px;}
+.cp-table .cp-name{max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;}
 .recon-status{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;}
 .tax-link-btn{display:flex;align-items:center;gap:8px;padding:12px 14px;background:rgba(232,213,176,.08);border:.5px solid rgba(232,213,176,.25);border-radius:var(--rs);margin-bottom:1rem;}
 .tax-link-label{font-size:14px;color:var(--text);flex:1;font-weight:500;}
@@ -421,6 +428,25 @@ tr:hover td{background:var(--surface2);}
         <div class="card-title">資産内訳</div>
         <div style="font-size:12px;color:var(--text3);padding:6px 0;">口座残高を入力すると表示されます</div>
         <div style="font-size:11px;color:var(--text3);margin-top:4px;">「CSV取り込み」タブ → 口座・資産残高 から入力</div>
+      </div>
+    </div>
+    <!-- Counterparty net section (shown when there are name-matched inc/exp pairs) -->
+    <div class="card" id="dash-cp-card" style="display:none;margin-bottom:1rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
+        <div class="card-title" style="margin-bottom:0;">取引相手別 純額</div>
+        <span style="font-size:11px;color:var(--text3);">「内容」が同じで <b>収入と支出の両方</b> がある相手のみ表示・純額の絶対値順</span>
+      </div>
+      <div style="overflow-x:auto;max-height:420px;overflow-y:auto;">
+        <table class="cp-table">
+          <thead><tr>
+            <th>相手（内容）</th>
+            <th style="text-align:right;">件数</th>
+            <th style="text-align:right;color:var(--inc);">入合計</th>
+            <th style="text-align:right;color:var(--exp);">出合計</th>
+            <th style="text-align:right;">純額</th>
+          </tr></thead>
+          <tbody id="dash-cp-body"></tbody>
+        </table>
       </div>
     </div>
     <!-- Asset History Section (shown when assetHistory is loaded) -->
@@ -1854,6 +1880,44 @@ function renderDashboard() {
   if (hasAsset) renderAssetChart(validAssets);
   renderYoY(csvRows);
   renderFixedVariable(csvRows);
+  renderCounterparty(csvRows);
+}
+
+/* 取引相手別 純額（収入・支出の両方ある相手のみ） */
+function renderCounterparty(rows) {
+  const card = document.getElementById('dash-cp-card');
+  const tbody = document.getElementById('dash-cp-body');
+  if (!card || !tbody) return;
+  // 内容（name）で集計。空・"-" 等の無意味なものは除外
+  const map = new Map();
+  rows.forEach(r => {
+    const key = (r.name || '').trim();
+    if (!key || key === '-' || key === '—') return;
+    if (!map.has(key)) map.set(key, { inc:0, exp:0, nInc:0, nExp:0 });
+    const g = map.get(key);
+    if (r.type === 'inc') { g.inc += r.amt;         g.nInc++; }
+    else                  { g.exp += Math.abs(r.amt); g.nExp++; }
+  });
+  // 入・出 両方ある相手のみ抽出
+  const entries = [...map.entries()]
+    .filter(([,g]) => g.nInc > 0 && g.nExp > 0)
+    .map(([name,g]) => ({ name, ...g, net: g.inc - g.exp, total: g.nInc + g.nExp }))
+    .sort((a,b) => Math.abs(b.net) - Math.abs(a.net));
+
+  if (!entries.length) { card.style.display = 'none'; tbody.innerHTML = ''; return; }
+  card.style.display = 'block';
+
+  tbody.innerHTML = entries.map(e => {
+    const sign = e.net >= 0 ? '+' : '-';
+    const cls  = e.net >= 0 ? 'v-pos' : 'v-neg';
+    return `<tr>
+      <td class="cp-name" title="${e.name}">${e.name}</td>
+      <td class="cp-num">${e.total}<span class="cp-count">（入${e.nInc}・出${e.nExp}）</span></td>
+      <td class="cp-num" style="color:var(--inc);">${fmt(e.inc)}</td>
+      <td class="cp-num" style="color:var(--exp);">${fmt(e.exp)}</td>
+      <td class="cp-num ${cls}">${sign}${fmt(e.net)}</td>
+    </tr>`;
+  }).join('');
 }
 
 /* META */
