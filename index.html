@@ -57,6 +57,7 @@ header{border-bottom:.5px solid var(--border);padding:1rem 1.5rem;display:flex;a
 .panel{display:none;padding:1.5rem;}.panel.active{display:block;animation:panel-in .28s ease;}
 @keyframes panel-in{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+:is(button,select,input,a):focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--rs);}
 
 /* METRICS */
 .metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--border);border:.5px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1.5rem;box-shadow:var(--shadow);}
@@ -80,6 +81,10 @@ header{border-bottom:.5px solid var(--border);padding:1rem 1.5rem;display:flex;a
   .metric{padding:1rem 1.2rem;}
   .metric-value{font-size:22px;}
   .manual-grid{grid-template-columns:1fr !important;}
+  table{font-size:13px;}
+  th{padding:8px 6px;}
+  td{padding:8px 6px;}
+  .card{padding:1rem 1.1rem;}
 }
 @media(max-width:480px){
   .metrics,.metrics-4{grid-template-columns:1fr;}
@@ -320,8 +325,8 @@ tr:hover td{background:var(--surface2);}
   <div class="logo">収支ダッシュボード</div>
   <div class="header-actions">
     <span class="header-meta" id="header-meta">データなし</span>
-    <button class="icon-btn" onclick="openDataModal()" title="データのバックアップ・復元">💾 データ</button>
-    <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="ライト/ダーク切替">🌙 ダーク</button>
+    <button class="icon-btn" onclick="openDataModal()" title="データのバックアップ・復元" aria-label="データのバックアップ・復元">💾 データ</button>
+    <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="ライト/ダーク切替" aria-label="ライトテーマとダークテーマの切替">🌙 ダーク</button>
   </div>
 </header>
 
@@ -978,7 +983,7 @@ function showToast(msg, type = 'info', duration = 3500) {
   const container = document.getElementById('toast-container');
   const el = document.createElement('div');
   el.className = `toast ${type}`;
-  el.innerHTML = `<span class="toast-icon">${icons[type]}</span><span class="toast-msg">${msg}</span>`;
+  el.innerHTML = `<span class="toast-icon">${icons[type]}</span><span class="toast-msg">${esc(msg)}</span>`;
   container.appendChild(el);
   setTimeout(() => {
     el.style.transition = 'opacity .2s, transform .2s';
@@ -990,6 +995,13 @@ function showToast(msg, type = 'info', duration = 3500) {
 
 const fmt = n => '¥' + Math.round(Math.abs(n)).toLocaleString('ja-JP');
 const fmtSgn = n => (n >= 0 ? '+' : '-') + fmt(n);
+/* HTML エスケープ（innerHTML への埋め込みは必ずこれを通す） */
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* 行配列からユニークな月リスト（昇順）を得る */
+const uniqueMonths = rows => [...new Set(rows.map(r=>r.month).filter(Boolean))].sort();
+/* 金額入力の上限（±1兆円）：異常値によるグラフ・レイアウト破綻を防ぐ */
+const AMT_MAX = 1e12;
+const clampAmt = v => Math.min(Math.max(parseFloat(v)||0, -AMT_MAX), AMT_MAX);
 
 /* チャートの軸・グリッド色をテーマに追従させる */
 function chartColors() {
@@ -1095,7 +1107,7 @@ function renderAssetRows() {
     const div = document.createElement('div');
     div.className = 'entry-row';
     div.innerHTML = `
-      <input type="text" placeholder="口座名・金融機関名" value="${row.name}" oninput="updAssetRow(${row.id},'name',this.value)">
+      <input type="text" placeholder="口座名・金融機関名" value="${esc(row.name)}" oninput="updAssetRow(${row.id},'name',this.value)">
       <input type="number" class="amt-in" placeholder="残高（円）" value="${row.amt||''}" min="0" oninput="updAssetRow(${row.id},'amt',this.value)">
       <button class="del-btn" onclick="delAssetRow(${row.id})">×</button>`;
     container.appendChild(div);
@@ -1112,7 +1124,7 @@ function delAssetRow(id) {
 function updAssetRow(id, field, val) {
   const row = manualAssets.find(r => r.id === id);
   if (!row) return;
-  row[field] = field === 'amt' ? (parseFloat(val)||0) : val;
+  row[field] = field === 'amt' ? clampAmt(val) : val;
   debouncedSave();
 }
 
@@ -1205,7 +1217,6 @@ function openAssetImportModal(parsed) {
   modal.classList.add('open');
 }
 function renderAssetImportList() {
-  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   document.getElementById('asset-import-list').innerHTML = assetImportParsed.map((a, i) =>
     '<label class="exp-check-item" style="cursor:pointer;">' +
       '<input type="checkbox" class="asset-import-cb" data-i="' + i + '" checked>' +
@@ -1290,7 +1301,7 @@ function renderChips() {
     renderAliasRows();
     return;
   }
-  const months = [...new Set(allCSV().map(r=>r.month).filter(Boolean))];
+  const months = uniqueMonths(allCSV());
   el.innerHTML = `
     <div class="file-summary-bar">
       <span class="file-summary-icon">📂</span>
@@ -1306,9 +1317,9 @@ function openFileModal() {
   document.getElementById('fm-csv-list').innerHTML = names.length
     ? names.map(n=>`
         <div class="fm-row">
-          <span class="fm-name" title="${n}">${n}</span>
+          <span class="fm-name" title="${esc(n)}">${esc(n)}</span>
           <span style="font-size:11px;color:var(--text3);">${csvFileMap[n].length}件</span>
-          <button class="del-btn" onclick="removeFile('${n.replace(/'/g,"\\'")}')">×</button>
+          <button class="del-btn" data-name="${esc(n)}" onclick="removeFile(this.dataset.name)">×</button>
         </div>`).join('')
     : '<div class="fm-empty">ファイルなし</div>';
   document.getElementById('file-modal').classList.add('open');
@@ -1331,10 +1342,10 @@ function refreshCSV() {
   const all = allCSV();
   document.getElementById('csv-summary').style.display = all.length ? 'block' : 'none';
   if (!all.length) return;
-  const months = [...new Set(all.map(r=>r.month).filter(Boolean))].sort().reverse();
+  const months = uniqueMonths(all).reverse();
   const sel = document.getElementById('cf-month');
   const prev = sel.value;
-  sel.innerHTML = '<option value="">すべての月</option>' + months.map(m=>`<option value="${m}">${m}</option>`).join('');
+  sel.innerHTML = '<option value="">すべての月</option>' + months.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');
   if (prev) sel.value = prev;
   applyCSVFilter();
   updateMeta();
@@ -1360,7 +1371,7 @@ function renderCSV(rows, all) {
   cb.textContent = fmtSgn(bal);
   cb.className = 'metric-value '+(bal>=0?'v-pos':'v-neg');
 
-  const months = [...new Set(all.map(r=>r.month).filter(Boolean))].sort();
+  const months = uniqueMonths(all);
   const mInc = months.map(m=>all.filter(r=>r.month===m&&r.type==='inc').reduce((s,r)=>s+r.amt,0));
   const mExp = months.map(m=>all.filter(r=>r.month===m&&r.type==='exp').reduce((s,r)=>s+Math.abs(r.amt),0));
   csvChart = renderBarChart('csv-month-chart', months.map(m=>m.slice(5)), mInc, mExp, csvChart);
@@ -1434,7 +1445,7 @@ function renderCatBars(id, rows) {
     const fillColor = overBudget ? 'var(--exp)' : palette[i%palette.length];
     return `
     <div class="bar-row">
-      <div class="bar-label" title="${c}">${c}</div>
+      <div class="bar-label" title="${esc(c)}">${esc(c)}</div>
       <div class="bar-track" style="position:relative;">
         <div class="bar-fill" style="width:${fillPct}%;background:${fillColor};"></div>
         ${budgetLinePct ? `<div style="position:absolute;top:-2px;bottom:-2px;left:${budgetLinePct}%;width:1.5px;background:rgba(232,213,176,.6);border-radius:1px;"></div>` : ''}
@@ -1455,10 +1466,10 @@ function openBudgetModal() {
   const cats = [...new Set(all.filter(r=>r.type==='exp').map(r=>r.cat))].sort();
   document.getElementById('budget-modal-list').innerHTML = cats.map(cat => `
     <div class="entry-row" style="margin-bottom:8px;">
-      <span style="font-size:13px;color:var(--text2);flex:1;">${cat}</span>
+      <span style="font-size:13px;color:var(--text2);flex:1;">${esc(cat)}</span>
       <input type="number" class="amt-in" placeholder="予算（円）"
         value="${budgetMap[cat]||''}" min="0"
-        id="bgt-${CSS.escape(cat)}" style="width:140px;">
+        id="bgt-${encodeURIComponent(cat)}" style="width:140px;">
       <span style="font-size:12px;color:var(--text3);">円/月</span>
     </div>`).join('') || '<div style="font-size:12px;color:var(--text3);">CSVを取り込むとカテゴリが表示されます</div>';
   document.getElementById('budget-modal').classList.add('open');
@@ -1470,7 +1481,7 @@ function saveBudget() {
   const all = allCSV();
   const cats = [...new Set(all.filter(r=>r.type==='exp').map(r=>r.cat))].sort();
   cats.forEach(cat => {
-    const el = document.getElementById('bgt-'+CSS.escape(cat));
+    const el = document.getElementById('bgt-'+encodeURIComponent(cat));
     const val = parseFloat(el?.value)||0;
     if (val > 0) budgetMap[cat] = val;
     else delete budgetMap[cat];
@@ -1484,11 +1495,12 @@ function saveBudget() {
 function renderYoY(rows) {
   const section = document.getElementById('dash-yoy-section');
   const container = document.getElementById('dash-yoy-cards');
-  const months = [...new Set(rows.map(r=>r.month).filter(Boolean))].sort();
+  const months = uniqueMonths(rows);
   if (!months.length) { section.style.display='none'; return; }
   const recentMonth = months[months.length-1];
-  const [ry, rm] = recentMonth.split('-');
-  const prevYearMonth = `${parseInt(ry)-1}-${rm}`;
+  const mParts = recentMonth.match(/^(\d{4})([-/])(\d{2})$/);
+  if (!mParts) { section.style.display='none'; return; }
+  const prevYearMonth = `${parseInt(mParts[1])-1}${mParts[2]}${mParts[3]}`;
   if (!months.includes(prevYearMonth)) { section.style.display='none'; return; }
   const calcMonth = m => ({
     inc: rows.filter(r=>r.month===m&&r.type==='inc').reduce((s,r)=>s+r.amt,0),
@@ -1583,7 +1595,7 @@ function renderAssetChart(assets) {
   document.getElementById('dash-asset-list').innerHTML = entries.map(([k,v],i)=>`
     <div class="bar-row">
       <div style="width:10px;height:10px;border-radius:2px;background:${paletteAsset[i%paletteAsset.length]};flex-shrink:0;"></div>
-      <div class="bar-label" title="${k}">${k}</div>
+      <div class="bar-label" title="${esc(k)}">${esc(k)}</div>
       <div class="bar-right">
         <div class="bar-amt">${fmt(v)}</div>
         <div class="bar-pct">${(v/total*100).toFixed(1)}%</div>
@@ -1594,10 +1606,10 @@ function renderAssetChart(assets) {
 /* TABLE */
 function rowHtml(r) {
   return `<tr>
-    <td>${r.date}</td>
-    <td title="${r.name}">${r.name}</td>
-    <td><span class="badge ${r.type==='inc'?'badge-inc':'badge-exp'}">${r.cat}</span></td>
-    <td title="${r.bank}" style="font-size:11px;color:var(--text3);">${r.bank.split(' - ')[0]}</td>
+    <td>${esc(r.date)}</td>
+    <td title="${esc(r.name)}">${esc(r.name)}</td>
+    <td><span class="badge ${r.type==='inc'?'badge-inc':'badge-exp'}">${esc(r.cat)}</span></td>
+    <td title="${esc(r.bank)}" style="font-size:11px;color:var(--text3);">${esc(r.bank.split(' - ')[0])}</td>
     <td style="text-align:right;" class="${r.type==='inc'?'amt-inc':'amt-exp'}">${r.type==='inc'?'+':'-'}${fmt(r.amt)}</td>
   </tr>`;
 }
@@ -1612,10 +1624,10 @@ function renderTable(rows) {
 function openAllModal() {
   const all = allCSV();
   document.getElementById('all-modal').classList.add('open');
-  const months = [...new Set(all.map(r=>r.month).filter(Boolean))].sort().reverse();
-  document.getElementById('mf-month').innerHTML = '<option value="">すべての月</option>' + months.map(m=>`<option value="${m}">${m}</option>`).join('');
+  const months = uniqueMonths(all).reverse();
+  document.getElementById('mf-month').innerHTML = '<option value="">すべての月</option>' + months.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');
   const cats = [...new Set(all.map(r=>r.cat).filter(Boolean))].sort();
-  document.getElementById('mf-cat').innerHTML = '<option value="">すべてのカテゴリ</option>' + cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  document.getElementById('mf-cat').innerHTML = '<option value="">すべてのカテゴリ</option>' + cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
   applyModalFilter();
 }
 function closeAllModal() { document.getElementById('all-modal').classList.remove('open'); }
@@ -1647,7 +1659,7 @@ function renderManual() {
       const div=document.createElement('div');
       div.className='entry-row';
       div.innerHTML=`
-        <input type="text" placeholder="項目名" value="${row.name}" oninput="updManual('${type}',${row.id},'name',this.value)">
+        <input type="text" placeholder="項目名" value="${esc(row.name)}" oninput="updManual('${type}',${row.id},'name',this.value)">
         <input type="number" class="amt-in" placeholder="金額" value="${row.amt||''}" min="0" oninput="updManual('${type}',${row.id},'amt',this.value)">
         <button class="del-btn" onclick="delRow('${type}',${row.id})">×</button>`;
       container.appendChild(div);
@@ -1659,7 +1671,7 @@ function updManual(type,id,field,val){
   const arr=type==='inc'?manualInc:manualExp;
   const row=arr.find(r=>r.id===id);
   if(!row)return;
-  row[field]=field==='amt'?(parseFloat(val)||0):val;
+  row[field]=field==='amt'?clampAmt(val):val;
   calcManual();
 }
 function addRow(type){ (type==='inc'?manualInc:manualExp).push({id:nextId++,name:'',amt:0}); renderManual(); saveStorage(); }
@@ -1684,15 +1696,15 @@ function calcManual(){
 function initDashFilter() {
   const all = allCSV();
   if (!all.length) return;
-  const months = [...new Set(all.map(r=>r.month).filter(Boolean))].sort();
+  const months = uniqueMonths(all);
   const fromSel = document.getElementById('df-from');
   const toSel   = document.getElementById('df-to');
   const prevFrom = fromSel.value, prevTo = toSel.value;
   // ラベルは「YYYY年MM月」で読みやすく、値は内部表現の "YYYY/MM"
   const label = m => `${m.slice(0,4)}年${m.slice(5,7)}月`;
   const desc = [...months].reverse(); // 新しい年月が上（降順）
-  fromSel.innerHTML = '<option value="">開始年月</option>' + desc.map(m=>`<option value="${m}">${label(m)}</option>`).join('');
-  toSel.innerHTML   = '<option value="">終了年月</option>' + desc.map(m=>`<option value="${m}">${label(m)}</option>`).join('');
+  fromSel.innerHTML = '<option value="">開始年月</option>' + desc.map(m=>`<option value="${esc(m)}">${esc(label(m))}</option>`).join('');
+  toSel.innerHTML   = '<option value="">終了年月</option>' + desc.map(m=>`<option value="${esc(m)}">${esc(label(m))}</option>`).join('');
   // 選択範囲が現存する月に残っていれば復元
   if (prevFrom && months.includes(prevFrom)) fromSel.value = prevFrom;
   if (prevTo   && months.includes(prevTo))   toSel.value   = prevTo;
@@ -1738,11 +1750,11 @@ function renderAliasRows() {
     : entries.map(([from, to], i) => `
         <div class="entry-row" style="margin-bottom:8px;" id="alias-row-${i}">
           <select onchange="updateAlias(${i},'from',this.value)" style="flex:1;">
-            ${rawCats.map(c => `<option value="${c}" ${c === from ? 'selected' : ''}>${c}</option>`).join('')}
+            ${rawCats.map(c => `<option value="${esc(c)}" ${c === from ? 'selected' : ''}>${esc(c)}</option>`).join('')}
           </select>
           <span style="font-size:12px;color:var(--text3);padding:0 8px;flex-shrink:0;">→</span>
           <select onchange="updateAlias(${i},'to',this.value)" style="flex:1;">
-            ${rawCats.map(c => `<option value="${c}" ${c === to ? 'selected' : ''}>${c}</option>`).join('')}
+            ${rawCats.map(c => `<option value="${esc(c)}" ${c === to ? 'selected' : ''}>${esc(c)}</option>`).join('')}
           </select>
           <button class="del-btn" onclick="removeAlias(${i})">×</button>
         </div>`).join('');
@@ -1813,8 +1825,8 @@ function openFixedModal() {
     const total = all.filter(r => r.type === 'exp' && r.cat === cat).reduce((s, r) => s + Math.abs(r.amt), 0);
     return `
       <div class="exp-check-item">
-        <input type="checkbox" id="fc-${CSS.escape(cat)}" ${fixedCats.has(cat) ? 'checked' : ''}>
-        <label for="fc-${CSS.escape(cat)}">${cat}</label>
+        <input type="checkbox" id="fc-${encodeURIComponent(cat)}" ${fixedCats.has(cat) ? 'checked' : ''}>
+        <label for="fc-${encodeURIComponent(cat)}">${esc(cat)}</label>
         <span class="exp-check-amt">${fmt(total)}</span>
       </div>`;
   }).join('') || '<div style="font-size:12px;color:var(--text3);">CSVを取り込むとカテゴリが表示されます</div>';
@@ -1829,7 +1841,7 @@ function saveFixedCats() {
   const all = allCSV();
   const cats = [...new Set(all.filter(r => r.type === 'exp').map(r => r.cat))].sort();
   fixedCats = new Set(cats.filter(cat => {
-    const el = document.getElementById('fc-' + CSS.escape(cat));
+    const el = document.getElementById('fc-' + encodeURIComponent(cat));
     return el && el.checked;
   }));
   saveStorage();
@@ -1858,7 +1870,7 @@ function renderDashboard() {
   const db=document.getElementById('db');
   db.textContent=fmtSgn(bal);
   db.className='metric-value '+(bal>=0?'v-pos':'v-neg');
-  const months = [...new Set(csvRows.map(r=>r.month).filter(Boolean))];
+  const months = uniqueMonths(csvRows);
   const avgExp = months.length ? csvExp/months.length : 0;
   document.getElementById('da').textContent = fmt(avgExp);
   document.getElementById('di-sub').textContent = csvRows.filter(r=>r.type==='inc').length+'件';
@@ -1866,7 +1878,7 @@ function renderDashboard() {
   document.getElementById('db-sub').textContent = bal>=0?'黒字':'赤字';
   document.getElementById('da-sub').textContent = months.length ? months.length+'ヶ月の平均' : '';
   if (csvRows.length) {
-    const sortedMonths=[...new Set(csvRows.map(r=>r.month).filter(Boolean))].sort();
+    const sortedMonths=uniqueMonths(csvRows);
     const mi=sortedMonths.map(m=>csvRows.filter(r=>r.month===m&&r.type==='inc').reduce((s,r)=>s+r.amt,0));
     const me=sortedMonths.map(m=>csvRows.filter(r=>r.month===m&&r.type==='exp').reduce((s,r)=>s+Math.abs(r.amt),0));
     dashChart    = renderBarChart('dash-month-chart', sortedMonths.map(m=>m.slice(5)), mi, me, dashChart);
@@ -1911,7 +1923,7 @@ function renderCounterparty(rows) {
     const sign = e.net >= 0 ? '+' : '-';
     const cls  = e.net >= 0 ? 'v-pos' : 'v-neg';
     return `<tr>
-      <td class="cp-name" title="${e.name}">${e.name}</td>
+      <td class="cp-name" title="${esc(e.name)}">${esc(e.name)}</td>
       <td class="cp-num">${e.total}<span class="cp-count">（入${e.nInc}・出${e.nExp}）</span></td>
       <td class="cp-num" style="color:var(--inc);">${fmt(e.inc)}</td>
       <td class="cp-num" style="color:var(--exp);">${fmt(e.exp)}</td>
@@ -1924,7 +1936,7 @@ function renderCounterparty(rows) {
 function updateMeta() {
   const all=allCSV();
   if (!all.length) { document.getElementById('header-meta').textContent='データなし'; return; }
-  const months=[...new Set(all.map(r=>r.month).filter(Boolean))].sort();
+  const months=uniqueMonths(all);
   const assetTotal = manualAssets.reduce((s,a)=>s+(a.amt||0),0);
   let meta = `${months[0]} 〜 ${months[months.length-1]}　${all.length.toLocaleString()}件`;
   if (assetTotal) meta += `　/ 資産 ${fmt(assetTotal)}`;
@@ -1995,7 +2007,7 @@ function renderAssetHistSummary() {
   el.innerHTML = `
     <div class="file-summary-bar" style="border-color:rgba(167,139,250,.3);">
       <span style="font-size:13px;color:var(--purple);">◈</span>
-      <span class="file-summary-text"><strong>資産推移CSV読み込み済み</strong>　${assetHistory.length}ヶ月分　最新: ${latest.month}　総資産 ${fmt(latest.total)}</span>
+      <span class="file-summary-text"><strong>資産推移CSV読み込み済み</strong>　${assetHistory.length}ヶ月分　最新: ${esc(latest.month)}　総資産 ${fmt(latest.total)}</span>
       <button class="action-btn" onclick="clearAssetHist()">削除</button>
     </div>`;
 }
@@ -2108,7 +2120,7 @@ function renderRecon() {
     const tip = reconTooltip(m, gap, assetChg, netInc);
 
     rows.push(`<tr>
-      <td>${m}</td>
+      <td>${esc(m)}</td>
       <td class="${gapCls}" title="${tip}" style="cursor:help;">${dot}${statusTxt}</td>
       <td>${fmt(assetNow)}</td>
       <td>${assetChg!==null?(assetChg>=0?'+':'-')+fmt(assetChg):'—'}</td>
@@ -2414,8 +2426,8 @@ function openExpModal() {
   const entries = Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
   document.getElementById('exp-modal-list').innerHTML = entries.map(([cat, amt])=>`
     <div class="exp-check-item">
-      <input type="checkbox" id="ec-${cat}" onchange="calcExpTotal()">
-      <label for="ec-${cat}">${cat}</label>
+      <input type="checkbox" id="ec-${encodeURIComponent(cat)}" onchange="calcExpTotal()">
+      <label for="ec-${encodeURIComponent(cat)}">${esc(cat)}</label>
       <span class="exp-check-amt">${fmt(amt)}</span>
       <span style="font-size:12px;color:var(--text2);min-width:50px;text-align:right;" data-amt="${amt}"></span>
     </div>`).join('');
@@ -2431,7 +2443,7 @@ function calcExpTotal() {
   rows.forEach(r => { catMap[r.cat] = (catMap[r.cat]||0) + Math.abs(r.amt); });
   let total = 0;
   Object.keys(catMap).forEach(cat => {
-    const cb = document.getElementById('ec-'+cat);
+    const cb = document.getElementById('ec-'+encodeURIComponent(cat));
     if (cb && cb.checked) total += catMap[cat];
   });
   document.getElementById('exp-modal-total').textContent = fmt(total);
@@ -2444,7 +2456,7 @@ function applyExpenses() {
   rows.forEach(r => { catMap[r.cat] = (catMap[r.cat]||0) + Math.abs(r.amt); });
   let total = 0;
   Object.keys(catMap).forEach(cat => {
-    const cb = document.getElementById('ec-'+cat);
+    const cb = document.getElementById('ec-'+encodeURIComponent(cat));
     if (cb && cb.checked) total += catMap[cat];
   });
   document.getElementById('tx-biz-exp').value = Math.round(total);
@@ -2452,6 +2464,10 @@ function applyExpenses() {
   renderTaxResult();
 }
 document.getElementById('exp-modal').onclick = e => { if(e.target===document.getElementById('exp-modal')) closeExpModal(); };
+/* Esc キーで開いているモーダルを閉じる */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.querySelectorAll('.modal-bg.open').forEach(m => m.classList.remove('open'));
+});
 
 /* 確定申告への自動連携 */
 function taxAutoFill() {
