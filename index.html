@@ -65,7 +65,7 @@ header{border-bottom:.5px solid var(--border);padding:1rem 1.5rem;display:flex;a
 .metric{background:var(--surface);padding:1.25rem 1.5rem;position:relative;transition:background .15s;}
 .metric:hover{background:var(--surface2);}
 .metric-label{font-size:12px;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.4rem;font-weight:500;}
-.metric-value{font-family:'DM Mono',monospace;font-size:28px;font-weight:600;letter-spacing:-.02em;}
+.metric-value{font-family:'DM Mono',monospace;font-size:28px;font-weight:600;letter-spacing:-.02em;overflow-wrap:anywhere;line-height:1.25;}
 .metric-sub{font-size:12px;color:var(--text2);margin-top:5px;}
 .v-inc{color:var(--inc);}.v-exp{color:var(--exp);}.v-pos{color:var(--inc);}.v-neg{color:var(--exp);}
 
@@ -632,10 +632,7 @@ tr:hover td{background:var(--surface2);}
     <div class="card-title">申告情報</div>
     <div class="tax-row">
       <span class="tax-label">申告年度</span>
-      <select id="tx-year" style="width:120px;" onchange="renderTaxResult()">
-        <option value="2024">2024年（令和6年）分</option>
-        <option value="2023">2023年（令和5年）分</option>
-      </select>
+      <select id="tx-year" style="width:160px;" onchange="renderTaxResult()"><!-- 選択肢はJSで動的生成（直近3年分） --></select>
     </div>
     <div class="tax-row">
       <span class="tax-label">申告の種類</span>
@@ -940,6 +937,7 @@ function debounce(fn, ms) {
 }
 
 /* STORAGE */
+let saveFailWarned = false;
 function saveStorage() {
   try {
     localStorage.setItem('kakeibo_csv', JSON.stringify(csvFileMap));
@@ -951,7 +949,14 @@ function saveStorage() {
     localStorage.setItem('kakeibo_budget', JSON.stringify(budgetMap));
     localStorage.setItem('kakeibo_cat_aliases', JSON.stringify(categoryAliases));
     localStorage.setItem('kakeibo_fixed_cats', JSON.stringify([...fixedCats]));
-  } catch(e) {}
+    saveFailWarned = false;
+  } catch(e) {
+    // 容量超過等で保存できないのに気づかないままリロードするとデータが消えるため必ず警告する
+    if (!saveFailWarned) {
+      saveFailWarned = true;
+      showToast('データの保存に失敗しました。ブラウザの保存容量（約5MB）を超えている可能性があります。不要なCSVファイルを削除するか、バックアップを書き出してください。', 'error', 10000);
+    }
+  }
 }
 const debouncedSave = debounce(saveStorage, 400);
 function loadStorage() {
@@ -2158,7 +2163,9 @@ document.getElementById('assethistfile').onchange = function(e){if(e.target.file
 /* ===== TAX ===== */
 
 /* 給与所得控除（2020年〜） */
-function calcSalaryDeduction(income) {
+function calcSalaryDeduction(income, year) {
+  // 令和7年（2025年）分以降：最低保障額 55万→65万円（給与収入190万円以下）
+  if (year >= 2025 && income <= 1900000) return 650000;
   if (income <= 1625000)  return 550000;
   if (income <= 1800000)  return Math.floor(income * 0.4) - 100000;
   if (income <= 3600000)  return Math.floor(income * 0.3) + 80000;
@@ -2181,28 +2188,34 @@ function calcEarthquakeDeduction(premium) {
 }
 
 /* 配偶者控除・配偶者特別控除（本人課税所得900万円以下の簡易表・参考） */
-function calcSpouseDeduction(spouseIncome, taxpayerIncome) {
+/* 配偶者控除・配偶者特別控除（納税者の合計所得900万円以下を想定。
+   900万円超の逓減（26万/13万円）は簡略化のため省略＝控除0円扱い。
+   2025年（令和7年）分以降は所得要件が48万→58万円に引き上げ、特別控除の満額帯も105万円まで拡大 */
+function calcSpouseDeduction(spouseIncome, taxpayerIncome, year) {
   if (taxpayerIncome > 9000000) return 0;
-  if (spouseIncome <= 480000) return 380000;
-  if (spouseIncome > 1330000) return 0;
-  if (spouseIncome <= 500000) return 380000;
-  if (spouseIncome <= 550000) return 360000;
-  if (spouseIncome <= 600000) return 310000;
-  if (spouseIncome <= 650000) return 260000;
-  if (spouseIncome <= 700000) return 210000;
-  if (spouseIncome <= 750000) return 160000;
-  if (spouseIncome <= 800000) return 110000;
-  if (spouseIncome <= 850000) return 60000;
-  if (spouseIncome <= 900000) return 30000;
-  if (spouseIncome <= 950000) return 0;
-  if (spouseIncome <= 1000000) return 30000;
-  if (spouseIncome <= 1050000) return 26000;
-  if (spouseIncome <= 1100000) return 21000;
-  if (spouseIncome <= 1150000) return 16000;
-  if (spouseIncome <= 1200000) return 11000;
-  if (spouseIncome <= 1250000) return 6000;
-  if (spouseIncome <= 1300000) return 3000;
+  const table = year >= 2025
+    ? [[580000,380000],[1050000,380000],[1100000,360000],[1150000,310000],[1200000,260000],[1250000,210000],[1300000,160000],[1330000,30000]]
+    : [[480000,380000],[950000,380000],[1000000,360000],[1050000,310000],[1100000,260000],[1150000,210000],[1200000,160000],[1250000,110000],[1300000,60000],[1330000,30000]];
+  for (const [limit, amt] of table) if (spouseIncome <= limit) return amt;
   return 0;
+}
+
+/* 基礎控除（年度対応）
+   〜2024年分: 48万円（合計所得2,400万円超は逓減 32万/16万/0）
+   2025・2026年分: 改正＋2年間の特例加算（所得帯により 95/88/68/63/58万円）
+   2027年分〜: 95万円（所得132万円以下）または58万円（2,350万円以下） */
+function calcBasicDeduction(totalIncome, year) {
+  if (totalIncome > 25000000) return 0;
+  if (totalIncome > 24500000) return 160000;
+  if (totalIncome > 24000000) return 320000;
+  if (year <= 2024) return 480000;
+  if (totalIncome > 23500000) return 480000;
+  if (totalIncome <= 1320000) return 950000;
+  if (year >= 2027) return 580000;
+  if (totalIncome <= 3360000) return 880000;
+  if (totalIncome <= 4890000) return 680000;
+  if (totalIncome <= 6550000) return 630000;
+  return 580000;
 }
 
 /* 生命保険料控除トグル */
@@ -2249,10 +2262,11 @@ function getChk(id) { return document.getElementById(id)?.checked||false; }
 
 function renderTaxResult() {
   const type = document.getElementById('tx-type').value;
+  const txYear = parseInt(document.getElementById('tx-year').value, 10) || (new Date().getFullYear() - 1);
 
   /* 所得計算 */
   const salaryIncome = getNum('tx-salary');
-  const salaryDeduction = (type==='salary'||type==='both') ? calcSalaryDeduction(salaryIncome) : 0;
+  const salaryDeduction = (type==='salary'||type==='both') ? calcSalaryDeduction(salaryIncome, txYear) : 0;
   const salaryKingaku = Math.max(0, salaryIncome - salaryDeduction);
   if (document.getElementById('tx-salary-deduction'))
     document.getElementById('tx-salary-deduction').textContent =
@@ -2270,9 +2284,10 @@ function renderTaxResult() {
   const totalIncome = salaryKingaku + bizKingaku + miscKingaku;
 
   /* 所得控除 */
-  const basic    = 480000;
+  const basic    = calcBasicDeduction(totalIncome, txYear);
+  const spouseThreshold = txYear >= 2025 ? 580000 : 480000;
   const spouseIncome = getChk('dc-spouse') ? getNum('dc-spouse-income') : 0;
-  const spouse = getChk('dc-spouse') ? calcSpouseDeduction(spouseIncome, totalIncome) : 0;
+  const spouse = getChk('dc-spouse') ? calcSpouseDeduction(spouseIncome, totalIncome, txYear) : 0;
   const depN     = getChk('dc-dep') ? (getNum('dc-dep-n')||0) : 0;
   const dep      = depN * 380000;
   const social   = getChk('dc-social') ? getNum('dc-social-amt') : 0;
@@ -2324,7 +2339,7 @@ function renderTaxResult() {
 
   rows.push('<tr><td colspan="2" style="font-size:12px;color:var(--text2);letter-spacing:.08em;padding-top:12px;padding-bottom:4px;">▍ 所得控除</td></tr>');
   rows.push(r('基礎控除', -basic, 'sub-row'));
-  if (spouse>0)    rows.push(r(spouseIncome<=480000?'配偶者控除':'配偶者特別控除', -spouse, 'sub-row'));
+  if (spouse>0)    rows.push(r(spouseIncome<=spouseThreshold?'配偶者控除':'配偶者特別控除', -spouse, 'sub-row'));
   if (dep>0)       rows.push(r(`扶養控除（${depN}人）`, -dep, 'sub-row'));
   if (social>0)    rows.push(r('社会保険料控除', -social, 'sub-row'));
   if (life>0)      rows.push(r('生命保険料控除', -life, 'sub-row'));
@@ -2352,7 +2367,7 @@ function renderTaxResult() {
   if (getChk('dc-spouse')) {
     const noteEl   = document.getElementById('dc-spouse-note');
     const resultEl = document.getElementById('dc-spouse-result');
-    const label = spouseIncome <= 480000
+    const label = spouseIncome <= spouseThreshold
       ? '配偶者控除が適用されます'
       : spouseIncome <= 1330000
         ? '配偶者特別控除が適用されます'
@@ -2396,7 +2411,7 @@ function importBizFromCSV() {
     document.getElementById('tx-biz-income').value = Math.round(inc);
     renderTaxResult();
   } else {
-    alert(`${year}年の収入データがCSVに見つかりませんでした。`);
+    showToast(`${year}年の収入データがCSVに見つかりませんでした。`, 'error', 5000);
   }
 }
 
@@ -2411,7 +2426,7 @@ function importMedicalFromCSV() {
     document.getElementById('dc-medical').checked = true;
     renderTaxResult();
   } else {
-    alert(`${year}年の医療費カテゴリが見つかりませんでした（カテゴリ名に「医療・病院・薬・歯科」が含まれるものを検索）。`);
+    showToast(`${year}年の医療費カテゴリが見つかりませんでした（「医療・病院・薬・歯科」を含むカテゴリを検索）。`, 'error', 6000);
   }
 }
 
@@ -2420,7 +2435,7 @@ function openExpModal() {
   const all = allCSV();
   const year = document.getElementById('tx-year').value;
   const rows = all.filter(r => r.type==='exp' && r.month && r.month.startsWith(year));
-  if (!rows.length) { alert('CSVデータがありません。先にCSVを取り込んでください。'); return; }
+  if (!rows.length) { showToast('CSVデータがありません。先にCSVを取り込んでください。', 'error', 5000); return; }
   const catMap = {};
   rows.forEach(r => { catMap[r.cat] = (catMap[r.cat]||0) + Math.abs(r.amt); });
   const entries = Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
@@ -2528,6 +2543,13 @@ function taxAutoFill() {
   renderTaxResult();
 }
 
+/* 申告年度の選択肢を動的生成（直近3年分・新しい年が上＝デフォルト） */
+(function initTaxYears(){
+  const latest = new Date().getFullYear() - 1; // 申告対象は前年分
+  document.getElementById('tx-year').innerHTML =
+    [latest, latest-1, latest-2].map(y => `<option value="${y}">${y}年（令和${y-2018}年）分</option>`).join('');
+})();
+
 // 年度変更時に連携ボタンの説明更新
 document.getElementById('tx-year').addEventListener('change', () => {
   const yr = document.getElementById('tx-year').value;
@@ -2592,6 +2614,12 @@ function exportBackup() {
   URL.revokeObjectURL(url);
   showToast('バックアップを書き出しました', 'success');
 }
+function resetAllData() {
+  if (!confirm('すべてのデータ（CSV・手動入力・資産・予算・設定）を削除して初期状態に戻します。この操作は取り消せません。よろしいですか？')) return;
+  BACKUP_KEYS.forEach(k => localStorage.removeItem(k));
+  location.reload();
+}
+
 function importBackup(files) {
   const file = files && files[0];
   if (!file) return;
@@ -2607,7 +2635,7 @@ function importBackup(files) {
       if (!confirm('現在のデータをバックアップの内容で上書きします。よろしいですか？')) return;
       // 既存のアプリデータを消してから復元（部分的な不整合を防ぐ）
       BACKUP_KEYS.forEach(k => localStorage.removeItem(k));
-      Object.entries(store).forEach(([k,v]) => { if (BACKUP_KEYS.includes(k)) localStorage.setItem(k, v); });
+      Object.entries(store).forEach(([k,v]) => { if (BACKUP_KEYS.includes(k) && typeof v === 'string') localStorage.setItem(k, v); });
       // 状態を読み直して全再描画
       loadStorage();
       initTheme();
@@ -2713,6 +2741,14 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <button class="action-btn" onclick="document.getElementById('backup-file').click()">📂 ファイルを選んで復元</button>
         <input type="file" id="backup-file" accept=".json,application/json" style="display:none">
+      </div>
+
+      <div style="border-top:.5px solid var(--border);padding-top:1.25rem;margin-top:1.25rem;">
+        <div class="section-label" style="margin-bottom:6px;color:var(--exp);">全データ削除</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:10px;line-height:1.6;">
+          このブラウザに保存されたすべてのデータ（CSV・手動入力・資産・予算・設定）を削除して初期状態に戻します。<strong style="color:var(--exp);">この操作は取り消せません。</strong>事前のバックアップ書き出しをおすすめします。
+        </div>
+        <button class="action-btn" style="color:var(--exp);border-color:rgba(248,113,113,.4);" onclick="resetAllData()">🗑 すべてのデータを削除</button>
       </div>
     </div>
   </div>
