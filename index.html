@@ -272,6 +272,24 @@ tr:hover td{background:var(--surface2);}
 .tax-link-label{font-size:14px;color:var(--text);flex:1;font-weight:500;}
 .tax-link-detail{font-size:12px;color:var(--text2);}
 
+/* PIVOT TABLE */
+.pivot-table{width:100%;border-collapse:collapse;font-size:12px;table-layout:auto;white-space:nowrap;}
+.pivot-table th{font-size:11px;letter-spacing:.04em;color:var(--text2);font-weight:600;padding:8px 8px;border-bottom:.5px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:1;}
+.pivot-table td{padding:7px 8px;border-bottom:.5px solid var(--border);font-family:'DM Mono',monospace;color:var(--text);}
+.pivot-table td:first-child,.pivot-table th:first-child{font-family:'Noto Sans JP',sans-serif;position:sticky;left:0;background:var(--surface);z-index:1;}
+.pivot-table th:first-child{z-index:2;}
+.pivot-table tr:hover td{background:var(--surface2);}
+.pivot-table tr:hover td:first-child{background:var(--surface2);}
+.pivot-table .pivot-total td{border-top:1px solid var(--border2);font-weight:600;color:var(--accent);}
+
+/* COLLAPSIBLE CARD */
+.card-toggle{background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;font-family:inherit;padding:2px 6px;border-radius:var(--rs);line-height:1;transition:color .15s,background .15s,transform .2s;flex-shrink:0;margin-left:auto;}
+.card-toggle:hover{color:var(--accent);background:var(--accent-dim);}
+.card.collapsed .card-toggle{transform:rotate(-90deg);}
+.card.collapsed > *:not(:first-child){display:none!important;}
+.card.collapsed{padding-bottom:.9rem;}
+.card > :first-child{cursor:pointer;}
+
 /* EXCLUDE */
 .excl-btn{background:none;border:.5px solid var(--border2);border-radius:999px;color:var(--text3);cursor:pointer;font-family:inherit;font-size:11px;font-weight:500;padding:2px 9px;transition:background .15s,color .15s,border-color .15s;white-space:nowrap;}
 .excl-btn:hover{color:var(--exp);border-color:var(--exp);}
@@ -405,7 +423,9 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
       <span class="filter-label" style="opacity:.7;">〜</span>
       <select id="df-to"><option value="">終了年月</option></select>
       <button class="action-btn" onclick="clearDashFilter()">全期間</button>
-      <button class="action-btn" onclick="openBudgetModal()" style="margin-left:auto;">予算設定</button>
+      <button class="action-btn" onclick="openPivotModal()" style="margin-left:auto;">📊 年間表</button>
+      <button class="action-btn no-print" onclick="expandAllCards()" title="折りたたんだカードをすべて開く">全カード展開</button>
+      <button class="action-btn" onclick="openBudgetModal()">予算設定</button>
       <button class="action-btn no-print" onclick="openFixedModal()">固定費設定</button>
       <button class="action-btn no-print" onclick="printDashboard()" style="color:var(--accent);border-color:rgba(196,181,253,.3);">🖨 月次レポート</button>
     </div>
@@ -443,7 +463,7 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
       </div>
     </div>
     <div class="grid-2">
-      <div class="card">
+      <div class="card" id="dash-month-card">
         <div class="card-title">月別収支</div>
         <div class="legend">
           <span><span class="legend-dot" style="background:rgba(74,222,128,.7)"></span>収入</span>
@@ -451,7 +471,7 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
         </div>
         <div class="chart-wrap-lg"><canvas id="dash-month-chart"></canvas></div>
       </div>
-      <div class="card">
+      <div class="card" id="dash-line-card">
         <div class="card-title">収支推移</div>
         <div class="legend">
           <span><span class="legend-dot" style="background:#e8d5b0;border-radius:50%;"></span>月次収支</span>
@@ -460,7 +480,7 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
       </div>
     </div>
     <div class="grid-2">
-      <div class="card">
+      <div class="card" id="dash-cat-card">
         <div class="card-title">支出カテゴリ</div>
         <div id="dash-cat-bars"></div>
       </div>
@@ -488,6 +508,18 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
           <span style="font-size:11px;color:var(--text3);" id="dash-pace-note"></span>
         </div>
         <div id="dash-pace-bars"></div>
+      </div>
+    </div>
+    <div class="card" id="dash-forecast-card" style="display:none;margin-bottom:1rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <div class="card-title" style="margin-bottom:0;">将来予測</div>
+        <span style="font-size:11px;color:var(--text3);">現在の貯蓄ペースが続いた場合の推定（運用益は含みません）</span>
+      </div>
+      <div id="dash-forecast-summary" style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:1rem;"></div>
+      <div class="chart-wrap-sm" style="margin-bottom:1rem;"><canvas id="dash-forecast-chart"></canvas></div>
+      <div id="dash-season" style="display:none;">
+        <div class="section-label" style="margin-top:4px;">月別の支出傾向（季節性）</div>
+        <div id="dash-season-bars"></div>
       </div>
     </div>
     <div class="card" id="dash-mom-card" style="display:none;margin-bottom:1rem;">
@@ -556,7 +588,7 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
         <div class="metric"><div class="metric-label">年初比（今年）</div><div class="metric-value" id="ah-yoy">—</div><div class="metric-sub" id="ah-yoy-sub"></div></div>
         <div class="metric"><div class="metric-label">照合ずれ（直近月）</div><div class="metric-value" id="ah-gap">—</div><div class="metric-sub" id="ah-gap-sub"></div></div>
       </div>
-      <div class="card" style="margin-bottom:1rem;">
+      <div class="card" id="dash-ahchart-card" style="margin-bottom:1rem;">
         <div class="card-title">総資産推移</div>
         <div class="legend">
           <span><span class="legend-dot" style="background:#a78bfa;border-radius:50%;"></span>総資産</span>
@@ -567,7 +599,7 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
         </div>
         <div class="chart-wrap-lg"><canvas id="dash-ah-chart"></canvas></div>
       </div>
-      <div class="card">
+      <div class="card" id="dash-recon-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
           <div class="card-title" style="margin-bottom:0;">収支照合チェック</div>
           <span style="font-size:11px;color:var(--text3);">資産増減 vs 収入−支出 の差（投資損益・未記録取引等を反映）</span>
@@ -902,6 +934,7 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
             <span style="font-size:12px;color:var(--text3);min-width:80px;">医療費合計</span>
             <input type="number" id="dc-medical-total" class="tax-input" style="width:120px;" placeholder="年間合計" min="0" oninput="renderTaxResult()">
             <button class="action-btn no-print" style="font-size:11px;" onclick="importMedicalFromCSV()">CSVから取得</button>
+            <button class="action-btn no-print" style="font-size:11px;" onclick="exportMedicalDetail()" title="医療費控除の明細書に転記できる一覧をCSVで出力">明細を出力</button>
           </div>
         </div>
       </div>
@@ -978,6 +1011,26 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
       <div style="font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.75rem;">収支CSV</div>
       <div id="fm-csv-list"></div>
       <div style="margin-top:1rem;font-size:11px;color:var(--text3);">※ 口座残高はCSV取り込みタブの「口座・資産残高」から手動で入力できます</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: 年間ピボット表 -->
+<div class="modal-bg" id="pivot-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">年間表（カテゴリ × 月）</div>
+      <button class="modal-close" onclick="closePivotModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="filter-bar" style="margin-bottom:12px;">
+        <span class="filter-label">年：</span>
+        <select id="pivot-year" onchange="renderPivot()"></select>
+        <button class="action-btn" onclick="exportPivotCSV()" style="margin-left:auto;">CSVエクスポート</button>
+      </div>
+      <div class="table-wrap" style="max-height:64vh;overflow:auto;">
+        <table class="pivot-table" id="pivot-table"></table>
+      </div>
     </div>
   </div>
 </div>
@@ -1111,6 +1164,8 @@ function loadStorage() {
     if (fc) fixedCats = new Set(JSON.parse(fc));
     const ex = localStorage.getItem('kakeibo_excluded');
     if (ex) excludedKeys = new Set(JSON.parse(ex));
+    const cc = localStorage.getItem('kakeibo_collapsed');
+    if (cc) collapsedCards = new Set(JSON.parse(cc));
   } catch(e) {}
 }
 
@@ -1672,6 +1727,27 @@ function openBudgetModal() {
 function closeBudgetModal() {
   document.getElementById('budget-modal').classList.remove('open');
 }
+
+/* 実績から予算を自動提案（直近6ヶ月の中央値を100円単位に丸める） */
+function suggestBudget() {
+  const all = allCSV();
+  const months = uniqueMonths(all).slice(-6);
+  if (!months.length) { showToast('CSVデータがありません', 'error'); return; }
+  const cats = [...new Set(all.filter(r => r.type === 'exp').map(r => r.cat))].sort();
+  let filled = 0;
+  cats.forEach(cat => {
+    const vals = months.map(m => all.filter(r => r.type === 'exp' && r.cat === cat && r.month === m)
+      .reduce((s, r) => s + Math.abs(r.amt), 0));
+    const nonZero = vals.filter(v => v > 0).sort((a, b) => a - b);
+    if (!nonZero.length) return;
+    const med = nonZero.length % 2
+      ? nonZero[(nonZero.length - 1) / 2]
+      : (nonZero[nonZero.length / 2 - 1] + nonZero[nonZero.length / 2]) / 2;
+    const el = document.getElementById('bgt-' + encodeURIComponent(cat));
+    if (el) { el.value = Math.round(med / 100) * 100; filled++; }
+  });
+  showToast(filled ? `${filled}件のカテゴリに予算を提案しました。確認して「保存」を押してください。` : '提案できるデータがありませんでした', filled ? 'success' : 'info', 5000);
+}
 function saveBudget() {
   const all = allCSV();
   const cats = [...new Set(all.filter(r=>r.type==='exp').map(r=>r.cat))].sort();
@@ -1852,6 +1928,7 @@ function applyModalFilter() {
 }
 document.getElementById('all-modal').onclick  = e => { if(e.target===document.getElementById('all-modal'))  closeAllModal(); };
 document.getElementById('cat-modal').onclick  = e => { if(e.target===document.getElementById('cat-modal'))  closeCatModal(); };
+document.getElementById('pivot-modal').onclick= e => { if(e.target===document.getElementById('pivot-modal'))closePivotModal(); };
 document.getElementById('file-modal').onclick = e => { if(e.target===document.getElementById('file-modal')) closeFileModal(); };
 document.addEventListener('keydown', e => { if(e.key==='Escape'){ closeAllModal(); closeFileModal(); closeExpModal(); } });
 ['mf-month','mf-type','mf-cat'].forEach(id=>document.getElementById(id).onchange=applyModalFilter);
@@ -2101,11 +2178,13 @@ function renderDashboard() {
   renderFixedVariable(csvRows);
   renderCounterparty(csvRows);
   renderInsights(allRows);
+  renderForecast(csvRows);
   renderMoM(csvRows);
   renderSavings(csvRows);
   renderBudgetPace();
   renderSubscriptions(allRows);
   renderHeatmap(csvRows);
+  initCollapsibles();
 }
 
 /* 取引相手別 純額（収入・支出の両方ある相手のみ） */
@@ -2143,6 +2222,111 @@ function renderCounterparty(rows) {
       <td class="cp-num ${cls}">${sign}${fmt(e.net)}</td>
     </tr>`;
   }).join('');
+}
+
+/* 年間ピボット表（カテゴリ × 月） */
+function pivotYears() {
+  return [...new Set(allCSV().map(r => (r.month || '').slice(0, 4)).filter(Boolean))].sort().reverse();
+}
+function openPivotModal() {
+  const years = pivotYears();
+  if (!years.length) { showToast('CSVデータがありません。先にCSVを取り込んでください。', 'error', 5000); return; }
+  const sel = document.getElementById('pivot-year');
+  const prev = sel.value;
+  sel.innerHTML = years.map(y => `<option value="${esc(y)}">${esc(y)}年</option>`).join('');
+  if (prev && years.includes(prev)) sel.value = prev;
+  document.getElementById('pivot-modal').classList.add('open');
+  renderPivot();
+}
+function closePivotModal() { document.getElementById('pivot-modal').classList.remove('open'); }
+
+function pivotData() {
+  const year = document.getElementById('pivot-year').value;
+  const rows = allCSV().filter(r => r.type === 'exp' && (r.month || '').startsWith(year));
+  const mons = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
+  const cats = [...new Set(rows.map(r => r.cat))];
+  const grid = cats.map(cat => {
+    const vals = mons.map(mm => rows.filter(r => r.cat === cat && (r.month || '').slice(5, 7) === mm)
+      .reduce((s, r) => s + Math.abs(r.amt), 0));
+    return { cat, vals, total: vals.reduce((s, v) => s + v, 0) };
+  }).sort((a, b) => b.total - a.total);
+  const totals = mons.map((_, i) => grid.reduce((s, g) => s + g.vals[i], 0));
+  return { year, mons, grid, totals, grand: totals.reduce((s, v) => s + v, 0) };
+}
+
+function renderPivot() {
+  const { mons, grid, totals, grand } = pivotData();
+  if (!grid.length) {
+    document.getElementById('pivot-table').innerHTML =
+      '<tbody><tr><td style="color:var(--text3);text-align:center;padding:2rem;">この年の支出データがありません</td></tr></tbody>';
+    return;
+  }
+  const head = `<thead><tr><th style="text-align:left;">カテゴリ</th>${
+    mons.map(m => `<th style="text-align:right;">${parseInt(m)}月</th>`).join('')}<th style="text-align:right;">合計</th><th style="text-align:right;">月平均</th></tr></thead>`;
+  const body = grid.map(g => {
+    const active = g.vals.filter(v => v > 0).length || 1;
+    return `<tr class="cat-clickable" onclick="closePivotModal();openCatModal(this.dataset.c)" data-c="${esc(g.cat)}" title="クリックで内訳を表示">
+      <td style="text-align:left;font-weight:500;">${esc(g.cat)}</td>
+      ${g.vals.map(v => `<td style="text-align:right;${v === 0 ? 'color:var(--text3);' : ''}">${v ? fmt(v) : '—'}</td>`).join('')}
+      <td style="text-align:right;font-weight:600;">${fmt(g.total)}</td>
+      <td style="text-align:right;color:var(--text2);">${fmt(g.total / active)}</td>
+    </tr>`;
+  }).join('');
+  const foot = `<tr class="pivot-total"><td style="text-align:left;font-weight:600;">合計</td>${
+    totals.map(v => `<td style="text-align:right;">${v ? fmt(v) : '—'}</td>`).join('')}<td style="text-align:right;">${fmt(grand)}</td><td></td></tr>`;
+  document.getElementById('pivot-table').innerHTML = head + '<tbody>' + body + foot + '</tbody>';
+}
+
+function exportPivotCSV() {
+  const { year, mons, grid, totals, grand } = pivotData();
+  if (!grid.length) { showToast('エクスポートするデータがありません', 'error'); return; }
+  const q = v => `"${String(v).replace(/"/g, '""')}"`;
+  const lines = [
+    ['カテゴリ', ...mons.map(m => parseInt(m) + '月'), '合計'].map(q).join(','),
+    ...grid.map(g => [g.cat, ...g.vals.map(v => Math.round(v)), Math.round(g.total)].map(q).join(',')),
+    ['合計', ...totals.map(v => Math.round(v)), Math.round(grand)].map(q).join(','),
+  ];
+  const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `年間表_${year}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast(`${year}年の年間表をエクスポートしました`, 'success');
+}
+
+/* カードの折りたたみ（開閉状態は localStorage に保存） */
+let collapsedCards = new Set();
+function initCollapsibles() {
+  document.querySelectorAll('#tab-dashboard .card[id]').forEach(card => {
+    const head = card.firstElementChild;
+    if (!head || head.querySelector('.card-toggle')) return;
+    const btn = document.createElement('button');
+    btn.className = 'card-toggle';
+    btn.textContent = '▾';
+    btn.title = '開閉';
+    btn.setAttribute('aria-label', 'カードの開閉');
+    // card-title 自体がヘッダーの場合はその中に、ラッパーの場合は末尾に置く
+    head.appendChild(btn);
+    head.addEventListener('click', e => {
+      if (e.target.closest('button') && !e.target.closest('.card-toggle')) return;
+      toggleCard(card.id);
+    });
+    if (collapsedCards.has(card.id)) card.classList.add('collapsed');
+  });
+}
+function toggleCard(id) {
+  const card = document.getElementById(id);
+  if (!card) return;
+  const nowCollapsed = !card.classList.contains('collapsed');
+  card.classList.toggle('collapsed', nowCollapsed);
+  if (nowCollapsed) collapsedCards.add(id); else collapsedCards.delete(id);
+  try { localStorage.setItem('kakeibo_collapsed', JSON.stringify([...collapsedCards])); } catch(e) {}
+}
+function expandAllCards() {
+  document.querySelectorAll('#tab-dashboard .card.collapsed').forEach(c => c.classList.remove('collapsed'));
+  collapsedCards.clear();
+  try { localStorage.setItem('kakeibo_collapsed', '[]'); } catch(e) {}
 }
 
 /* カテゴリ内訳モーダル（ドリルダウン） */
@@ -2396,10 +2580,153 @@ function renderInsights(allRows) {
       text: `${esc(latest)}の収支は${bal >= 0 ? '黒字' : '赤字'} ${fmtSgn(bal)}（貯蓄率 ${(bal / latestInc * 100).toFixed(1)}%）` });
   }
 
+  // 大口取引（直近月・支出の平均+標準偏差の2倍を超えるもの）
+  const latestExps = allRows.filter(r => r.month === latest && r.type === 'exp').map(r => r);
+  if (latestExps.length >= 5) {
+    const amts = latestExps.map(r => Math.abs(r.amt));
+    const mean = amts.reduce((s, v) => s + v, 0) / amts.length;
+    const sd = Math.sqrt(amts.reduce((s, v) => s + (v - mean) ** 2, 0) / amts.length);
+    const big = latestExps.filter(r => Math.abs(r.amt) > mean + sd * 2 && Math.abs(r.amt) >= 20000)
+      .sort((a, b) => Math.abs(b.amt) - Math.abs(a.amt));
+    if (big.length) {
+      items.push({ cls: 'warn',
+        text: `大きな支出：「${esc(big[0].name)}」${fmt(big[0].amt)}${big.length > 1 ? ` ほか${big.length-1}件` : ''} — 特別支出なら明細から除外できます` });
+    }
+  }
+
+  // データの抜け月チェック（連続する月が欠けている場合）
+  const gaps = [];
+  for (let i = 1; i < months.length; i++) {
+    const d = monthDiff(months[i-1], months[i]);
+    if (d > 1) for (let k = 1; k < d; k++) {
+      const [y, m] = months[i-1].split(/[-/]/).map(Number);
+      const sep = months[i-1].includes('-') ? '-' : '/';
+      const mo = m + k, yy = y + Math.floor((mo - 1) / 12), mm = ((mo - 1) % 12) + 1;
+      gaps.push(`${yy}${sep}${String(mm).padStart(2, '0')}`);
+    }
+  }
+  if (gaps.length) {
+    items.push({ cls: 'warn',
+      text: `データが欠けている月があります：${gaps.slice(0, 3).map(esc).join('、')}${gaps.length > 3 ? ` ほか${gaps.length-3}ヶ月` : ''} — CSVの取り込み漏れかもしれません` });
+  }
+
   if (!items.length) { card.style.display = 'none'; return; }
   card.style.display = 'block';
   document.getElementById('dash-insights-list').innerHTML =
-    items.slice(0, 4).map(i => `<li class="${i.cls}">${i.text}</li>`).join('');
+    items.slice(0, 6).map(i => `<li class="${i.cls}">${i.text}</li>`).join('');
+}
+
+/* 将来予測（資産推移＋貯蓄ペース）と季節性 */
+let forecastChart = null;
+function renderForecast(csvRows) {
+  const card = document.getElementById('dash-forecast-card');
+  const months = uniqueMonths(csvRows);
+  // 直近12ヶ月の平均月次収支から貯蓄ペースを推定
+  const recent = months.slice(-12);
+  const netByMonth = recent.map(m => {
+    const inc = csvRows.filter(r => r.month === m && r.type === 'inc').reduce((s, r) => s + r.amt, 0);
+    const exp = csvRows.filter(r => r.month === m && r.type === 'exp').reduce((s, r) => s + Math.abs(r.amt), 0);
+    return inc - exp;
+  });
+  const hasFlow = recent.length >= 3 && netByMonth.some(v => v !== 0);
+  const hasAsset = assetHistory.length > 0;
+  if (!hasFlow && !hasAsset) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  const monthlyNet = hasFlow ? netByMonth.reduce((s, v) => s + v, 0) / netByMonth.length : 0;
+  const baseAsset = hasAsset ? assetHistory[assetHistory.length - 1].total : 0;
+
+  let sum = `<div><div class="metric-label">月次貯蓄ペース（直近${recent.length}ヶ月平均）</div>
+    <div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:600;color:${monthlyNet >= 0 ? 'var(--inc)' : 'var(--exp)'};">${fmtSgn(monthlyNet)}</div></div>`;
+  if (hasAsset) {
+    [1, 5, 10].forEach(y => {
+      const v = baseAsset + monthlyNet * 12 * y;
+      sum += `<div><div class="metric-label">${y}年後の資産（推定）</div>
+        <div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:600;color:var(--purple);">${fmt(v)}</div></div>`;
+    });
+    // FIRE到達（年間支出25年分）の予測
+    const annualExp = recent.length
+      ? recent.map(m => csvRows.filter(r => r.month === m && r.type === 'exp').reduce((s, r) => s + Math.abs(r.amt), 0))
+          .reduce((s, v) => s + v, 0) / recent.length * 12
+      : 0;
+    if (annualExp > 0 && monthlyNet > 0) {
+      const target = annualExp * 25;
+      const need = target - baseAsset;
+      const yrs = need <= 0 ? 0 : need / (monthlyNet * 12);
+      sum += `<div><div class="metric-label">FIRE到達予測（支出25年分）</div>
+        <div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:600;color:var(--accent);">${
+          need <= 0 ? '達成済み 🎉' : yrs > 60 ? '60年以上' : `約${yrs.toFixed(1)}年後`}</div></div>`;
+    }
+  }
+  document.getElementById('dash-forecast-summary').innerHTML = sum;
+
+  // 予測チャート：実績（資産推移）＋今後10年の推定
+  const cc = chartColors();
+  const histLabels = hasAsset ? assetHistory.slice(-24).map(r => r.month) : [];
+  const histData = hasAsset ? assetHistory.slice(-24).map(r => r.total) : [];
+  const futLabels = [], futData = [];
+  if (hasAsset) {
+    const last = assetHistory[assetHistory.length - 1].month;
+    const [ly, lm] = last.split(/[-/]/).map(Number);
+    for (let i = 1; i <= 120; i++) {
+      const mo = lm + i, y = ly + Math.floor((mo - 1) / 12), m2 = ((mo - 1) % 12) + 1;
+      if (i % 12 === 0) {
+        futLabels.push(`${y}/${String(m2).padStart(2, '0')}`);
+        futData.push(Math.round(baseAsset + monthlyNet * i));
+      }
+    }
+  }
+  if (forecastChart) forecastChart.destroy();
+  forecastChart = new Chart(document.getElementById('dash-forecast-chart').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: [...histLabels, ...futLabels],
+      datasets: [
+        { label: '実績', data: [...histData, ...futLabels.map(() => null)],
+          borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,.08)', tension: .3, pointRadius: 0, borderWidth: 2, fill: true },
+        { label: '予測', data: [...histData.map((v, i) => i === histData.length - 1 ? v : null), ...futData],
+          borderColor: 'rgba(167,139,250,.55)', borderDash: [5, 4], tension: .3, pointRadius: 0, borderWidth: 2, fill: false },
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, spanGaps: true,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => (c.datasetIndex ? '予測 ' : '') + fmt(c.raw) } } },
+      scales: { x: { ticks: { color: cc.tick, maxTicksLimit: 10 }, grid: { display: false } },
+                y: { ticks: { color: cc.tick, callback: v => '¥' + (v / 10000).toFixed(0) + '万' }, grid: { color: cc.gridY } } } }
+  });
+
+  renderSeasonality(csvRows);
+}
+
+/* 季節性：暦月ごとの平均支出（2年分以上のデータがある場合のみ） */
+function renderSeasonality(csvRows) {
+  const box = document.getElementById('dash-season');
+  const months = uniqueMonths(csvRows);
+  if (months.length < 13) { box.style.display = 'none'; return; }
+  const byCal = {};
+  months.forEach(m => {
+    const mm = m.split(/[-/]/)[1];
+    const exp = csvRows.filter(r => r.month === m && r.type === 'exp').reduce((s, r) => s + Math.abs(r.amt), 0);
+    if (!byCal[mm]) byCal[mm] = [];
+    byCal[mm].push(exp);
+  });
+  const avgs = Object.entries(byCal).map(([mm, arr]) => ({ mm, avg: arr.reduce((s, v) => s + v, 0) / arr.length, n: arr.length }))
+    .sort((a, b) => a.mm.localeCompare(b.mm));
+  if (avgs.length < 6) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  const overall = avgs.reduce((s, a) => s + a.avg, 0) / avgs.length;
+  const max = Math.max(...avgs.map(a => a.avg));
+  document.getElementById('dash-season-bars').innerHTML = avgs.map(a => {
+    const diff = overall > 0 ? (a.avg - overall) / overall * 100 : 0;
+    const hot = diff > 10;
+    return `<div class="bar-row">
+      <div class="bar-label" style="width:60px;">${parseInt(a.mm)}月</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(a.avg / max * 100).toFixed(1)}%;background:${hot ? 'var(--exp)' : 'var(--accent)'};"></div></div>
+      <div class="bar-right" style="min-width:150px;">
+        <div class="bar-amt">${fmt(a.avg)}</div>
+        <div class="bar-pct" style="min-width:56px;color:${hot ? 'var(--exp)' : 'var(--text3)'};">${diff >= 0 ? '+' : ''}${diff.toFixed(0)}%</div>
+      </div>
+    </div>`;
+  }).join('') + `<div style="font-size:11px;color:var(--text3);margin-top:8px;">同じ暦月の平均支出。%は全月平均との差（+10%超は赤）</div>`;
 }
 
 /* 前月比較（カテゴリ別の増減） */
@@ -2991,6 +3318,28 @@ function importMedicalFromCSV() {
   }
 }
 
+/* 医療費控除の明細をCSV出力（申告時の転記用） */
+function exportMedicalDetail() {
+  const year = document.getElementById('tx-year').value;
+  const rows = allCSV().filter(r => r.type === 'exp' && r.cat && /医療|病院|薬|歯科/i.test(r.cat) &&
+    r.month && r.month.startsWith(year)).sort((a, b) => a.date.localeCompare(b.date));
+  if (!rows.length) { showToast(`${year}年の医療費データが見つかりませんでした。`, 'error', 5000); return; }
+  const q = v => `"${String(v).replace(/"/g, '""')}"`;
+  const total = rows.reduce((s, r) => s + Math.abs(r.amt), 0);
+  const lines = [
+    ['日付', '支払先', 'カテゴリ', '支払金額', '支払方法'].map(q).join(','),
+    ...rows.map(r => [r.date, r.name, r.cat, Math.round(Math.abs(r.amt)), r.bank].map(q).join(',')),
+    ['合計', '', '', Math.round(total), ''].map(q).join(','),
+  ];
+  const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `医療費明細_${year}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast(`${rows.length}件・合計${fmt(total)}の医療費明細を出力しました`, 'success', 5000);
+}
+
 /* 経費選択モーダル */
 function openExpModal() {
   const all = allCSV();
@@ -3154,7 +3503,7 @@ function toggleTheme() {
 }
 
 /* ===== データのバックアップ / 復元 ===== */
-const BACKUP_KEYS = ['kakeibo_csv','kakeibo_assets','kakeibo_ah','kakeibo_inc','kakeibo_exp','kakeibo_nextId','kakeibo_budget','kakeibo_cat_aliases','kakeibo_fixed_cats','kakeibo_excluded','kakeibo_theme'];
+const BACKUP_KEYS = ['kakeibo_csv','kakeibo_assets','kakeibo_ah','kakeibo_inc','kakeibo_exp','kakeibo_nextId','kakeibo_budget','kakeibo_cat_aliases','kakeibo_fixed_cats','kakeibo_excluded','kakeibo_collapsed','kakeibo_theme'];
 function openDataModal() {
   // 現在のデータ概要を表示
   const txCount = Object.values(csvFileMap).reduce((s,a)=>s+a.length,0);
@@ -3250,8 +3599,12 @@ document.addEventListener('DOMContentLoaded', () => {
       <button class="modal-close" onclick="closeBudgetModal()">×</button>
     </div>
     <div class="modal-body">
-      <div style="font-size:12px;color:var(--text3);margin-bottom:1rem;">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px;">
         月次の予算を設定します。未入力のカテゴリは予算なしとして扱います。
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:1rem;">
+        <button class="add-btn" style="margin-top:0;" onclick="suggestBudget()">✨ 実績から自動提案</button>
+        <span style="font-size:11px;color:var(--text3);">直近6ヶ月の中央値をもとに入力します（保存前に調整できます）</span>
       </div>
       <div id="budget-modal-list"></div>
       <div style="margin-top:1rem;display:flex;justify-content:flex-end;gap:8px;">
