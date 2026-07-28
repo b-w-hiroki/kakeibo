@@ -79,6 +79,7 @@ GitHub Pages 設定: `master` ブランチの `/`（root）を公開。`index.ht
 | `budgetMap` | カテゴリ別予算 `{cat: 金額}` | `kakeibo_budget` |
 | `categoryAliases` | カテゴリ統合エイリアス `{元: 統合先}` | `kakeibo_cat_aliases` |
 | `fixedCats` | 固定費カテゴリ `Set` | `kakeibo_fixed_cats`（配列で保存） |
+| `excludedKeys` | 集計から除外する取引キー `Set` | `kakeibo_excluded`（配列で保存） |
 | （テーマ） | `light` / `dark` の選択 | `kakeibo_theme` |
 
 バックアップ対象キーは JS 側の `BACKUP_KEYS` 配列で一元管理。localStorage キーを追加したらここにも足すこと。
@@ -95,6 +96,9 @@ GitHub Pages 設定: `master` ブランチの `/`（root）を公開。`index.ht
 | `processCSV(raw, filename)` | 正規化トランザクション配列に変換、振替/対象外を除外 |
 | `loadFiles(files)` | 複数ファイルを `readAsArrayBuffer` で読み込み |
 | `applyCSVFilter()` / `getDashRows()` | タブごとのフィルタ適用 |
+| `allCSV()` / `allCSVRaw()` | 集計対象（除外を差し引いたもの）／除外を含む全取引 |
+| `txKey(r)` / `toggleExclude(key)` | 取引の一意キー（ID列優先）／除外のトグル |
+| `openCatModal(cat)` | カテゴリ内訳のドリルダウン表示 |
 | `renderBarChart` / `renderLineChart` / `renderCatBars` | Chart.js 描画 |
 | `renderFixedVariable` | 固定費 vs 変動費 KPI |
 | `renderYoY` | 前年同月比 |

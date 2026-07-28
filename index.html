@@ -272,6 +272,18 @@ tr:hover td{background:var(--surface2);}
 .tax-link-label{font-size:14px;color:var(--text);flex:1;font-weight:500;}
 .tax-link-detail{font-size:12px;color:var(--text2);}
 
+/* EXCLUDE */
+.excl-btn{background:none;border:.5px solid var(--border2);border-radius:999px;color:var(--text3);cursor:pointer;font-family:inherit;font-size:11px;font-weight:500;padding:2px 9px;transition:background .15s,color .15s,border-color .15s;white-space:nowrap;}
+.excl-btn:hover{color:var(--exp);border-color:var(--exp);}
+.excl-btn.on{background:var(--accent-dim);color:var(--accent);border-color:var(--accent-glow);}
+tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
+
+/* DRILL-DOWN */
+.cat-clickable{cursor:pointer;border-radius:var(--rs);transition:background .15s;}
+.cat-clickable:hover{background:var(--surface2);}
+.mom-up{color:var(--exp);}
+.mom-down{color:var(--inc);}
+
 /* INSIGHTS */
 .insight-list{list-style:none;display:flex;flex-direction:column;gap:8px;}
 .insight-list li{font-size:13px;color:var(--text);padding-left:20px;position:relative;line-height:1.6;}
@@ -478,6 +490,22 @@ tr:hover td{background:var(--surface2);}
         <div id="dash-pace-bars"></div>
       </div>
     </div>
+    <div class="card" id="dash-mom-card" style="display:none;margin-bottom:1rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <div class="card-title" style="margin-bottom:0;">前月比較（カテゴリ別）</div>
+        <span style="font-size:11px;color:var(--text3);" id="dash-mom-note"></span>
+      </div>
+      <div style="overflow-x:auto;"><table class="recon-table" id="dash-mom-table">
+        <thead><tr>
+          <th style="text-align:left;">カテゴリ</th>
+          <th id="mom-th-prev">先月</th>
+          <th id="mom-th-cur">今月</th>
+          <th>増減</th>
+          <th>変化率</th>
+        </tr></thead>
+        <tbody id="dash-mom-body"></tbody>
+      </table></div>
+    </div>
     <div class="card" id="dash-subs-card" style="display:none;margin-bottom:1rem;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
         <div class="card-title" style="margin-bottom:0;">定期支出（サブスク検出）</div>
@@ -601,6 +629,7 @@ tr:hover td{background:var(--surface2);}
   <div class="err" id="err-msg"></div>
 
   <div id="csv-summary" style="display:none">
+    <div id="excluded-bar"></div>
     <div class="metrics">
       <div class="metric"><div class="metric-label">収入合計</div><div class="metric-value v-inc" id="ci">¥0</div></div>
       <div class="metric"><div class="metric-label">支出合計</div><div class="metric-value v-exp" id="ce">¥0</div></div>
@@ -646,6 +675,7 @@ tr:hover td{background:var(--surface2);}
             <th style="width:100px;">カテゴリ</th>
             <th style="width:90px;font-size:11px;">口座</th>
             <th style="width:110px;text-align:right;">金額</th>
+            <th style="width:64px;text-align:center;" class="no-print">除外</th>
           </tr></thead>
           <tbody id="csv-tbody"></tbody>
         </table>
@@ -952,6 +982,36 @@ tr:hover td{background:var(--surface2);}
   </div>
 </div>
 
+<!-- MODAL: カテゴリ内訳（ドリルダウン） -->
+<div class="modal-bg" id="cat-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">カテゴリ内訳 — <span id="cat-modal-name"></span></div>
+      <button class="modal-close" onclick="closeCatModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="cat-modal-summary" style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:1rem;"></div>
+      <div class="section-label">月別推移</div>
+      <div class="chart-wrap-sm" style="margin-bottom:1.25rem;"><canvas id="cat-modal-chart"></canvas></div>
+      <div class="section-label">支出先ランキング</div>
+      <div id="cat-modal-names" style="margin-bottom:1.25rem;"></div>
+      <div class="section-label">明細（金額の大きい順・上位100件）</div>
+      <div class="table-wrap" style="max-height:40vh;overflow-y:auto;">
+        <table>
+          <thead><tr>
+            <th style="width:90px;">日付</th>
+            <th>内容</th>
+            <th style="width:90px;font-size:11px;">口座</th>
+            <th style="width:110px;text-align:right;">金額</th>
+            <th style="width:64px;text-align:center;" class="no-print">除外</th>
+          </tr></thead>
+          <tbody id="cat-modal-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: 全件表示 -->
 <div class="modal-bg" id="all-modal">
   <div class="modal">
@@ -974,6 +1034,7 @@ tr:hover td{background:var(--surface2);}
             <th style="width:100px;">カテゴリ</th>
             <th style="width:90px;font-size:11px;">口座</th>
             <th style="width:110px;text-align:right;">金額</th>
+            <th style="width:64px;text-align:center;" class="no-print">除外</th>
           </tr></thead>
           <tbody id="modal-tbody"></tbody>
         </table>
@@ -993,6 +1054,7 @@ let csvChart = null, dashChart = null, csvLineChart = null, dashLineChart = null
 let budgetMap = {};
 let categoryAliases = {};
 let fixedCats = new Set();
+let excludedKeys = new Set(); // 集計から除外する取引（特別支出など）
 
 /* UTILS - debounce */
 function debounce(fn, ms) {
@@ -1016,6 +1078,7 @@ function saveStorage() {
     localStorage.setItem('kakeibo_budget', JSON.stringify(budgetMap));
     localStorage.setItem('kakeibo_cat_aliases', JSON.stringify(categoryAliases));
     localStorage.setItem('kakeibo_fixed_cats', JSON.stringify([...fixedCats]));
+    localStorage.setItem('kakeibo_excluded', JSON.stringify([...excludedKeys]));
     saveFailWarned = false;
   } catch(e) {
     // 容量超過等で保存できないのに気づかないままリロードするとデータが消えるため必ず警告する
@@ -1046,6 +1109,8 @@ function loadStorage() {
     if (aliases) categoryAliases = JSON.parse(aliases);
     const fc = localStorage.getItem('kakeibo_fixed_cats');
     if (fc) fixedCats = new Set(JSON.parse(fc));
+    const ex = localStorage.getItem('kakeibo_excluded');
+    if (ex) excludedKeys = new Set(JSON.parse(ex));
   } catch(e) {}
 }
 
@@ -1143,6 +1208,7 @@ function detectFields(rows) {
     bankKey:     keys.find(k=>/保有金融機関|口座|bank/i.test(k)),
     transferKey: keys.find(k=>/振替/i.test(k)),
     calcKey:     keys.find(k=>/計算対象/i.test(k)),
+    idKey:       keys.find(k=>/^ID$/i.test(k)),
   };
 }
 
@@ -1166,6 +1232,7 @@ function processCSV(raw, filename) {
       type:  isInc ? 'inc' : 'exp',
       bank:  f.bankKey ? r[f.bankKey] : '',
       month: (f.dateKey ? r[f.dateKey] : '').slice(0,7),
+      id:    f.idKey ? r[f.idKey] : '',
     };
   }).filter(r=>r.amt!==0);
 }
@@ -1403,11 +1470,58 @@ function removeFile(name) {
   showToast(`「${name}」を削除しました`, 'info');
   if (document.getElementById('file-modal').classList.contains('open')) openFileModal();
 }
-function allCSV() {
+/* 取引の一意キー。マネーフォワードのID列があればそれを使い、
+   無い場合（旧データ・他形式）は日付+内容+金額で代用する */
+function txKey(r) {
+  return r.id ? 'id:' + r.id : `k:${r.date}|${r.name}|${r.amt}`;
+}
+function isExcluded(r) { return excludedKeys.has(txKey(r)); }
+
+/* 除外を含む全取引（明細表示・除外解除UI用） */
+function allCSVRaw() {
   return Object.values(csvFileMap).flat().map(r => {
     const normalizedCat = categoryAliases[r.cat] || r.cat;
     return normalizedCat !== r.cat ? { ...r, cat: normalizedCat } : r;
   });
+}
+/* 集計対象の取引（除外済みを差し引いたもの） */
+function allCSV() {
+  return excludedKeys.size ? allCSVRaw().filter(r => !isExcluded(r)) : allCSVRaw();
+}
+
+function toggleExclude(key) {
+  if (excludedKeys.has(key)) excludedKeys.delete(key);
+  else excludedKeys.add(key);
+  saveStorage();
+  applyCSVFilter();
+  renderExcludedBar();
+  renderDashboard();
+  if (document.getElementById('all-modal').classList.contains('open')) applyModalFilter();
+}
+function clearExcluded() {
+  if (!excludedKeys.size) return;
+  if (!confirm(`${excludedKeys.size}件の除外をすべて解除します。よろしいですか？`)) return;
+  excludedKeys.clear();
+  saveStorage();
+  applyCSVFilter();
+  renderExcludedBar();
+  renderDashboard();
+  showToast('除外をすべて解除しました', 'info');
+}
+function renderExcludedBar() {
+  const el = document.getElementById('excluded-bar');
+  if (!el) return;
+  const n = excludedKeys.size;
+  if (!n) { el.innerHTML = ''; return; }
+  // 実データに存在する除外のみ数える（ファイル削除後の残骸を表示しない）
+  const live = allCSVRaw().filter(isExcluded);
+  const amt = live.reduce((s, r) => s + Math.abs(r.amt), 0);
+  el.innerHTML = `
+    <div class="file-summary-bar" style="border-color:rgba(232,213,176,.35);">
+      <span class="file-summary-icon">🚫</span>
+      <span class="file-summary-text"><strong>${live.length}件</strong>を集計から除外中（合計 ${fmt(amt)}）</span>
+      <button class="action-btn" onclick="clearExcluded()">すべて解除</button>
+    </div>`;
 }
 
 function refreshCSV() {
@@ -1424,7 +1538,7 @@ function refreshCSV() {
 }
 
 function applyCSVFilter() {
-  const all = allCSV();
+  const all = allCSVRaw(); // 明細には除外済みも表示（解除できるように）
   const month = document.getElementById('cf-month').value;
   const type  = document.getElementById('cf-type').value;
   const q     = (document.getElementById('cf-search')?.value || '').trim().toLowerCase();
@@ -1439,8 +1553,11 @@ function applyCSVFilter() {
 }
 
 function renderCSV(rows, all) {
-  const inc = rows.filter(r=>r.type==='inc').reduce((s,r)=>s+r.amt,0);
-  const exp = rows.filter(r=>r.type==='exp').reduce((s,r)=>s+Math.abs(r.amt),0);
+  // 合計・グラフは除外を反映（明細テーブルには除外行も表示する）
+  const active = rows.filter(r => !isExcluded(r));
+  all = all.filter(r => !isExcluded(r));
+  const inc = active.filter(r=>r.type==='inc').reduce((s,r)=>s+r.amt,0);
+  const exp = active.filter(r=>r.type==='exp').reduce((s,r)=>s+Math.abs(r.amt),0);
   const bal = inc-exp;
   document.getElementById('ci').textContent = fmt(inc);
   document.getElementById('ce').textContent = fmt(exp);
@@ -1453,8 +1570,9 @@ function renderCSV(rows, all) {
   const mExp = months.map(m=>all.filter(r=>r.month===m&&r.type==='exp').reduce((s,r)=>s+Math.abs(r.amt),0));
   csvChart = renderBarChart('csv-month-chart', months.map(m=>m.slice(5)), mInc, mExp, csvChart);
   csvLineChart = renderLineChart('csv-line-chart', months.map(m=>m.slice(5)), mInc.map((v,i)=>v-mExp[i]), csvLineChart);
-  renderCatBars('csv-cat-bars', rows);
+  renderCatBars('csv-cat-bars', active);
   renderTable(rows);
+  renderExcludedBar();
 }
 
 /* BAR CHART */
@@ -1521,7 +1639,7 @@ function renderCatBars(id, rows) {
     const fillPct = (v/maxWithBudget*100).toFixed(1);
     const fillColor = overBudget ? 'var(--exp)' : palette[i%palette.length];
     return `
-    <div class="bar-row">
+    <div class="bar-row cat-clickable" onclick="openCatModal(this.dataset.c)" data-c="${esc(c)}" title="クリックで「${esc(c)}」の内訳を表示">
       <div class="bar-label" title="${esc(c)}">${esc(c)}</div>
       <div class="bar-track" style="position:relative;">
         <div class="bar-fill" style="width:${fillPct}%;background:${fillColor};"></div>
@@ -1687,12 +1805,18 @@ function renderAssetChart(assets) {
 
 /* TABLE */
 function rowHtml(r) {
-  return `<tr>
+  const key = txKey(r);
+  const ex = excludedKeys.has(key);
+  return `<tr class="${ex?'row-excluded':''}">
     <td>${esc(r.date)}</td>
     <td title="${esc(r.name)}">${esc(r.name)}</td>
     <td><span class="badge ${r.type==='inc'?'badge-inc':'badge-exp'}">${esc(r.cat)}</span></td>
     <td title="${esc(r.bank)}" style="font-size:11px;color:var(--text3);">${esc(r.bank.split(' - ')[0])}</td>
     <td style="text-align:right;" class="${r.type==='inc'?'amt-inc':'amt-exp'}">${r.type==='inc'?'+':'-'}${fmt(r.amt)}</td>
+    <td style="text-align:center;">
+      <button class="excl-btn ${ex?'on':''}" data-k="${esc(key)}" onclick="toggleExclude(this.dataset.k)"
+        title="${ex?'集計に戻す':'この取引を集計から除外する（旅行など特別支出の除外に）'}">${ex?'戻す':'除外'}</button>
+    </td>
   </tr>`;
 }
 
@@ -1704,7 +1828,7 @@ function renderTable(rows) {
 
 /* MODAL */
 function openAllModal() {
-  const all = allCSV();
+  const all = allCSVRaw();
   document.getElementById('all-modal').classList.add('open');
   const months = uniqueMonths(all).reverse();
   document.getElementById('mf-month').innerHTML = '<option value="">すべての月</option>' + months.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');
@@ -1714,7 +1838,7 @@ function openAllModal() {
 }
 function closeAllModal() { document.getElementById('all-modal').classList.remove('open'); }
 function applyModalFilter() {
-  const all = allCSV();
+  const all = allCSVRaw();
   const month = document.getElementById('mf-month').value;
   const type  = document.getElementById('mf-type').value;
   const cat   = document.getElementById('mf-cat').value;
@@ -1727,6 +1851,7 @@ function applyModalFilter() {
   document.getElementById('modal-tbody').innerHTML = sorted.map(rowHtml).join('');
 }
 document.getElementById('all-modal').onclick  = e => { if(e.target===document.getElementById('all-modal'))  closeAllModal(); };
+document.getElementById('cat-modal').onclick  = e => { if(e.target===document.getElementById('cat-modal'))  closeCatModal(); };
 document.getElementById('file-modal').onclick = e => { if(e.target===document.getElementById('file-modal')) closeFileModal(); };
 document.addEventListener('keydown', e => { if(e.key==='Escape'){ closeAllModal(); closeFileModal(); closeExpModal(); } });
 ['mf-month','mf-type','mf-cat'].forEach(id=>document.getElementById(id).onchange=applyModalFilter);
@@ -1976,6 +2101,7 @@ function renderDashboard() {
   renderFixedVariable(csvRows);
   renderCounterparty(csvRows);
   renderInsights(allRows);
+  renderMoM(csvRows);
   renderSavings(csvRows);
   renderBudgetPace();
   renderSubscriptions(allRows);
@@ -2017,6 +2143,85 @@ function renderCounterparty(rows) {
       <td class="cp-num ${cls}">${sign}${fmt(e.net)}</td>
     </tr>`;
   }).join('');
+}
+
+/* カテゴリ内訳モーダル（ドリルダウン） */
+let catModalChart = null;
+let catModalCurrent = '';
+function openCatModal(cat) {
+  if (!cat) return;
+  catModalCurrent = cat;
+  document.getElementById('cat-modal-name').textContent = cat;
+  document.getElementById('cat-modal').classList.add('open');
+  renderCatModal();
+}
+function closeCatModal() {
+  document.getElementById('cat-modal').classList.remove('open');
+  if (catModalChart) { catModalChart.destroy(); catModalChart = null; }
+}
+function renderCatModal() {
+  const cat = catModalCurrent;
+  // ダッシュボードの期間フィルタを尊重しつつ、除外行も表示（解除できるように）
+  const from = document.getElementById('df-from').value;
+  const to   = document.getElementById('df-to').value;
+  const scoped = allCSVRaw().filter(r => r.type === 'exp' && r.cat === cat &&
+    (!from || r.month >= from) && (!to || r.month <= to));
+  const active = scoped.filter(r => !isExcluded(r));
+
+  const total = active.reduce((s, r) => s + Math.abs(r.amt), 0);
+  const months = uniqueMonths(active);
+  const avg = months.length ? total / months.length : 0;
+  const budget = budgetMap[cat] || 0;
+  let sum = `<div><div class="metric-label">合計</div><div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:600;color:var(--exp);">${fmt(total)}</div></div>
+    <div><div class="metric-label">月平均</div><div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:600;">${fmt(avg)}</div></div>
+    <div><div class="metric-label">件数</div><div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:600;">${active.length}件</div></div>`;
+  if (budget > 0) {
+    const pct = avg / budget * 100;
+    sum += `<div><div class="metric-label">予算比（月平均）</div><div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:600;color:${pct > 100 ? 'var(--exp)' : 'var(--inc)'};">${pct.toFixed(0)}%</div></div>`;
+  }
+  document.getElementById('cat-modal-summary').innerHTML = sum;
+
+  // 月別推移
+  const vals = months.map(m => active.filter(r => r.month === m).reduce((s, r) => s + Math.abs(r.amt), 0));
+  if (catModalChart) catModalChart.destroy();
+  const cc = chartColors();
+  catModalChart = new Chart(document.getElementById('cat-modal-chart').getContext('2d'), {
+    type: 'bar',
+    data: { labels: months.map(m => m.slice(5)), datasets: [
+      { data: vals, backgroundColor: 'rgba(248,113,113,.6)', borderRadius: 3 },
+      ...(budget > 0 ? [{ type: 'line', data: months.map(() => budget), borderColor: 'rgba(232,213,176,.8)',
+        borderWidth: 1.5, borderDash: [4,3], pointRadius: 0, fill: false }] : []) ] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => (c.datasetIndex ? '予算 ' : '') + fmt(c.raw) } } },
+      scales: { x: { ticks: { color: cc.tick }, grid: { display: false } },
+                y: { ticks: { color: cc.tick, callback: v => '¥' + (v/10000).toFixed(0) + '万' }, grid: { color: cc.gridY } } } }
+  });
+
+  // 支出先ランキング（上位8件）
+  const byName = {};
+  active.forEach(r => { const k = r.name || '(名称なし)'; byName[k] = (byName[k]||0) + Math.abs(r.amt); });
+  const ranked = Object.entries(byName).sort((a,b) => b[1]-a[1]).slice(0, 8);
+  const maxV = ranked.length ? ranked[0][1] : 1;
+  document.getElementById('cat-modal-names').innerHTML = ranked.map(([n, v]) => `
+    <div class="bar-row">
+      <div class="bar-label" style="width:150px;" title="${esc(n)}">${esc(n)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(v/maxV*100).toFixed(1)}%;background:var(--exp);"></div></div>
+      <div class="bar-right"><div class="bar-amt">${fmt(v)}</div><div class="bar-pct">${total ? (v/total*100).toFixed(1) : 0}%</div></div>
+    </div>`).join('') || '<div style="font-size:12px;color:var(--text3);">データなし</div>';
+
+  // 明細（金額の大きい順）
+  const sorted = [...scoped].sort((a,b) => Math.abs(b.amt) - Math.abs(a.amt)).slice(0, 100);
+  document.getElementById('cat-modal-tbody').innerHTML = sorted.map(r => {
+    const key = txKey(r); const ex = excludedKeys.has(key);
+    return `<tr class="${ex?'row-excluded':''}">
+      <td>${esc(r.date)}</td>
+      <td title="${esc(r.name)}">${esc(r.name)}</td>
+      <td title="${esc(r.bank)}" style="font-size:11px;color:var(--text3);">${esc(r.bank.split(' - ')[0])}</td>
+      <td style="text-align:right;" class="amt-exp">-${fmt(r.amt)}</td>
+      <td style="text-align:center;"><button class="excl-btn ${ex?'on':''}" data-k="${esc(key)}"
+        onclick="toggleExclude(this.dataset.k);renderCatModal();">${ex?'戻す':'除外'}</button></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" style="color:var(--text3);text-align:center;padding:1rem;">データなし</td></tr>';
 }
 
 /* 月キー "2025/01" / "2025-01" の差分（ヶ月） */
@@ -2195,6 +2400,48 @@ function renderInsights(allRows) {
   card.style.display = 'block';
   document.getElementById('dash-insights-list').innerHTML =
     items.slice(0, 4).map(i => `<li class="${i.cls}">${i.text}</li>`).join('');
+}
+
+/* 前月比較（カテゴリ別の増減） */
+function renderMoM(csvRows) {
+  const card = document.getElementById('dash-mom-card');
+  const months = uniqueMonths(csvRows);
+  if (months.length < 2) { card.style.display = 'none'; return; }
+  const cur = months[months.length-1], prev = months[months.length-2];
+  const sumBy = m => {
+    const o = {};
+    csvRows.filter(r => r.month === m && r.type === 'exp').forEach(r => { o[r.cat] = (o[r.cat]||0) + Math.abs(r.amt); });
+    return o;
+  };
+  const c = sumBy(cur), p = sumBy(prev);
+  const cats = [...new Set([...Object.keys(c), ...Object.keys(p)])];
+  if (!cats.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  document.getElementById('dash-mom-note').textContent = `${prev} → ${cur}（連続しない月の場合もデータ上の直近2ヶ月で比較）`;
+  document.getElementById('mom-th-prev').textContent = prev;
+  document.getElementById('mom-th-cur').textContent = cur;
+
+  const rows = cats.map(cat => ({ cat, prev: p[cat]||0, cur: c[cat]||0, diff: (c[cat]||0) - (p[cat]||0) }))
+    .sort((a,b) => Math.abs(b.diff) - Math.abs(a.diff)).slice(0, 12);
+  const totalPrev = Object.values(p).reduce((s,v)=>s+v,0);
+  const totalCur  = Object.values(c).reduce((s,v)=>s+v,0);
+
+  document.getElementById('dash-mom-body').innerHTML = rows.map(r => {
+    const cls = r.diff > 0 ? 'mom-up' : r.diff < 0 ? 'mom-down' : '';
+    const pct = r.prev > 0 ? ((r.diff / r.prev) * 100).toFixed(0) + '%' : (r.cur > 0 ? '新規' : '—');
+    return `<tr class="cat-clickable" onclick="openCatModal(this.dataset.c)" data-c="${esc(r.cat)}" title="クリックで内訳を表示">
+      <td style="font-family:inherit;font-weight:500;text-align:left;">${esc(r.cat)}</td>
+      <td>${r.prev ? fmt(r.prev) : '—'}</td>
+      <td>${r.cur ? fmt(r.cur) : '—'}</td>
+      <td class="${cls}">${r.diff === 0 ? '—' : (r.diff > 0 ? '+' : '-') + fmt(r.diff)}</td>
+      <td class="${cls}">${r.diff > 0 && r.prev > 0 ? '+' : ''}${pct}</td>
+    </tr>`;
+  }).join('') + `<tr style="border-top:1px solid var(--border2);">
+      <td style="font-family:inherit;font-weight:600;text-align:left;">支出合計</td>
+      <td>${fmt(totalPrev)}</td><td>${fmt(totalCur)}</td>
+      <td class="${totalCur-totalPrev > 0 ? 'mom-up' : 'mom-down'}">${totalCur-totalPrev >= 0 ? '+' : '-'}${fmt(totalCur-totalPrev)}</td>
+      <td class="${totalCur-totalPrev > 0 ? 'mom-up' : 'mom-down'}">${totalPrev > 0 ? ((totalCur-totalPrev)/totalPrev*100).toFixed(0)+'%' : '—'}</td>
+    </tr>`;
 }
 
 /* 日別支出ヒートマップ（直近26週） */
@@ -2907,7 +3154,7 @@ function toggleTheme() {
 }
 
 /* ===== データのバックアップ / 復元 ===== */
-const BACKUP_KEYS = ['kakeibo_csv','kakeibo_assets','kakeibo_ah','kakeibo_inc','kakeibo_exp','kakeibo_nextId','kakeibo_budget','kakeibo_cat_aliases','kakeibo_fixed_cats','kakeibo_theme'];
+const BACKUP_KEYS = ['kakeibo_csv','kakeibo_assets','kakeibo_ah','kakeibo_inc','kakeibo_exp','kakeibo_nextId','kakeibo_budget','kakeibo_cat_aliases','kakeibo_fixed_cats','kakeibo_excluded','kakeibo_theme'];
 function openDataModal() {
   // 現在のデータ概要を表示
   const txCount = Object.values(csvFileMap).reduce((s,a)=>s+a.length,0);
