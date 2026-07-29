@@ -6,7 +6,7 @@
 
 ```
 /
-├── index.html         全コード（HTML/CSS/JS）が入った単一ファイル ≒ 2300 行
+├── index.html         全コード（HTML/CSS/JS）が入った単一ファイル ≒ 4100 行
 ├── CLAUDE.md          このファイル
 ├── .claude/           Claude Code 用設定
 └── files/, files.zip  作業用フォルダ（コミット対象外でよい）
@@ -62,12 +62,14 @@ GitHub Pages 設定: `master` ブランチの `/`（root）を公開。`index.ht
   type:  "exp",         // "inc" | "exp"
   bank:  "楽天カード",
   month: "2025/01",
+  id:    "abc123",     // CSV の ID 列（除外・重複検出のキーに使う。無い場合は空）
+  sub:   "食料品",      // 中項目（ドリルダウンの内訳に使う。無い場合は空）
 }
 ```
 
 ## 状態（トップレベル変数 / localStorage キー）
 
-`index.html` の 835 行目付近にまとまっている。`saveStorage()` で永続化、`loadStorage()` で復元。
+`index.html` の STATE セクション（1230 行目付近）にまとまっている。`saveStorage()` で永続化、`loadStorage()` で復元。
 
 | 変数 | 用途 | localStorage キー |
 |------|------|-----------------|
@@ -99,7 +101,9 @@ GitHub Pages 設定: `master` ブランチの `/`（root）を公開。`index.ht
 | `processCSV(raw, filename)` | 正規化トランザクション配列に変換、振替/対象外を除外 |
 | `loadFiles(files)` | 複数ファイルを `readAsArrayBuffer` で読み込み |
 | `applyCSVFilter()` / `getDashRows()` | タブごとのフィルタ適用 |
-| `allCSV()` / `allCSVRaw()` | 集計対象（除外を差し引いたもの）／除外を含む全取引 |
+| `allCSV()` / `allCSVRaw()` | 集計対象（除外を差し引いたもの）／除外を含む全取引。結果はメモ化される |
+| `invalidateCSVCache()` | 上記のメモ化を破棄。`saveStorage()` / `loadStorage()` が自動で呼ぶ |
+| `countDuplicateRows(rows, filename)` | 取り込み済み取引との重複件数を数える（二重計上の防止） |
 | `txKey(r)` / `toggleExclude(key)` | 取引の一意キー（ID列優先）／除外のトグル |
 | `openCatModal(cat)` | カテゴリ内訳のドリルダウン表示 |
 | `openPivotModal()` / `renderPivot()` | 年間表（カテゴリ×月）の表示・CSV出力 |
@@ -139,6 +143,7 @@ python -m http.server 8000
 - **`saveStorage()` の呼び忘れに注意**。UI からデータを変える関数（add/del/upd 系）は必ず保存する。デバウンス版 `debouncedSave` でも可。
 - **タブ追加時**: `<div class="tab-bar">` のボタン、対応する `.panel#tab-xxx`、`switchTab` での描画呼び出しの 3 点をセットで更新。
 - **金額は内部的に「収入=正、支出=負」で統一**。表示時に `Math.abs()` して符号を付ける（`fmt` / `fmtSgn` ヘルパ）。
+- **`csvFileMap` / `categoryAliases` / `excludedKeys` を直接書き換えたら `saveStorage()` を通す**。集計結果はメモ化されており、`saveStorage()` / `loadStorage()` が `invalidateCSVCache()` を呼ぶことで一貫性を保っている。保存を挟まず書き換える場合は明示的にキャッシュを破棄すること。
 
 ## 過去の経緯
 
