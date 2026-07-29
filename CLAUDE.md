@@ -81,6 +81,8 @@ GitHub Pages 設定: `master` ブランチの `/`（root）を公開。`index.ht
 | `fixedCats` | 固定費カテゴリ `Set` | `kakeibo_fixed_cats`（配列で保存） |
 | `excludedKeys` | 集計から除外する取引キー `Set` | `kakeibo_excluded`（配列で保存） |
 | `collapsedCards` | 折りたたみ中のカードID `Set` | `kakeibo_collapsed`（配列で保存） |
+| `assetGoal` | 資産目標 `{amt, year}` | `kakeibo_goal` |
+| `catColors` | カテゴリ別グラフ色 `{cat: '#rrggbb'}` | `kakeibo_cat_colors` |
 | （テーマ） | `light` / `dark` の選択 | `kakeibo_theme` |
 
 バックアップ対象キーは JS 側の `BACKUP_KEYS` 配列で一元管理。localStorage キーを追加したらここにも足すこと。
@@ -104,6 +106,10 @@ GitHub Pages 設定: `master` ブランチの `/`（root）を公開。`index.ht
 | `renderForecast` / `renderSeasonality` | 将来予測（資産・FIRE到達）と月別の季節性 |
 | `suggestBudget()` | 直近6ヶ月の中央値から予算を自動提案 |
 | `initCollapsibles()` / `toggleCard(id)` | ダッシュボードカードの折りたたみ |
+| `setQuickRange(kind)` | 期間のクイックフィルタ（今月/先月/直近6ヶ月/今年/全期間） |
+| `loadSampleData()` | 動作確認用のサンプルデータ生成（14ヶ月分） |
+| `openHelpModal()` | 使い方・機能ガイド |
+| `renderYearSummary()` / `renderGoal()` | 年次サマリー／資産目標の進捗 |
 | `renderBarChart` / `renderLineChart` / `renderCatBars` | Chart.js 描画 |
 | `renderFixedVariable` | 固定費 vs 変動費 KPI |
 | `renderYoY` | 前年同月比 |
