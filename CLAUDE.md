@@ -80,6 +80,7 @@ GitHub Pages 設定: `master` ブランチの `/`（root）を公開。`index.ht
 | `categoryAliases` | カテゴリ統合エイリアス `{元: 統合先}` | `kakeibo_cat_aliases` |
 | `fixedCats` | 固定費カテゴリ `Set` | `kakeibo_fixed_cats`（配列で保存） |
 | `excludedKeys` | 集計から除外する取引キー `Set` | `kakeibo_excluded`（配列で保存） |
+| `collapsedCards` | 折りたたみ中のカードID `Set` | `kakeibo_collapsed`（配列で保存） |
 | （テーマ） | `light` / `dark` の選択 | `kakeibo_theme` |
 
 バックアップ対象キーは JS 側の `BACKUP_KEYS` 配列で一元管理。localStorage キーを追加したらここにも足すこと。
@@ -99,6 +100,10 @@ GitHub Pages 設定: `master` ブランチの `/`（root）を公開。`index.ht
 | `allCSV()` / `allCSVRaw()` | 集計対象（除外を差し引いたもの）／除外を含む全取引 |
 | `txKey(r)` / `toggleExclude(key)` | 取引の一意キー（ID列優先）／除外のトグル |
 | `openCatModal(cat)` | カテゴリ内訳のドリルダウン表示 |
+| `openPivotModal()` / `renderPivot()` | 年間表（カテゴリ×月）の表示・CSV出力 |
+| `renderForecast` / `renderSeasonality` | 将来予測（資産・FIRE到達）と月別の季節性 |
+| `suggestBudget()` | 直近6ヶ月の中央値から予算を自動提案 |
+| `initCollapsibles()` / `toggleCard(id)` | ダッシュボードカードの折りたたみ |
 | `renderBarChart` / `renderLineChart` / `renderCatBars` | Chart.js 描画 |
 | `renderFixedVariable` | 固定費 vs 変動費 KPI |
 | `renderYoY` | 前年同月比 |
