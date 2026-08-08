@@ -2,6 +2,21 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<!-- Content Security Policy: 万一 XSS が成立しても localStorage の中身を外部へ送信できないよう
+     connect-src を自オリジンに限定する。読み込み先は Chart.js と Google Fonts の CDN のみ許可。
+     ※ インライン script / style と on* ハンドラを多用しているため 'unsafe-inline' は外せない。
+     ※ frame-ancestors は meta 版 CSP では無視されるため指定していない（GitHub Pages ではヘッダを付けられない）。 -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com;
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src 'self' https://fonts.gstatic.com;
+  img-src 'self' data: blob:;
+  connect-src 'self';
+  object-src 'none';
+  base-uri 'none';
+  form-action 'none';
+">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0f0f0f">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1103,6 +1118,15 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
           <li>「CSV取り込み」タブにドロップ。複数月まとめてOK</li>
           <li>任意で「資産」→「資産推移」→ 月次 → CSVも取り込むと、資産グラフ・照合・FIRE予測が使えます</li>
         </ol>
+      </div>
+      <div class="help-sec">
+        <div class="section-label">データの取り扱い・注意</div>
+        <ul class="help-list">
+          <li><strong>サーバーには一切送信されません。</strong>ログインもアカウント登録も不要で、データはこのブラウザのlocalStorageだけに保存されます</li>
+          <li>裏を返すと<strong>端末の安全性がそのまま上限</strong>になります。共有PCやネットカフェでの利用は避けてください（ブラウザ拡張機能からも読み取れます）</li>
+          <li>「💾 データ」から書き出すバックアップJSONは<strong>暗号化されていない平文</strong>です。保存場所・共有先にご注意ください</li>
+          <li>ブラウザの「サイトデータを削除」やシークレットウィンドウでは<strong>データが消えます</strong>。定期的にバックアップを取ってください</li>
+        </ul>
       </div>
       <div class="help-sec">
         <div class="section-label">ダッシュボードの見方</div>
@@ -3476,13 +3500,13 @@ function renderRecon() {
 
     rows.push(`<tr>
       <td>${esc(m)}</td>
-      <td class="${gapCls}" title="${tip}" style="cursor:help;">${dot}${statusTxt}</td>
+      <td class="${gapCls}" title="${esc(tip)}" style="cursor:help;">${dot}${statusTxt}</td>
       <td>${fmt(assetNow)}</td>
       <td>${assetChg!==null?(assetChg>=0?'+':'-')+fmt(assetChg):'—'}</td>
       <td>${tx?fmt(tx.inc):'—'}</td>
       <td>${tx?fmt(tx.exp):'—'}</td>
       <td>${netInc!==null?(netInc>=0?'+':'-')+fmt(netInc):'—'}</td>
-      <td class="${gapCls}" title="${tip}" style="cursor:help;">${gap!==null?(gap>=0?'+':'-')+fmt(gap):'—'}</td>
+      <td class="${gapCls}" title="${esc(tip)}" style="cursor:help;">${gap!==null?(gap>=0?'+':'-')+fmt(gap):'—'}</td>
     </tr>`);
   });
   tbody.innerHTML = rows.reverse().join(''); // newest first
