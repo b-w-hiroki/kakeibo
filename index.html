@@ -586,6 +586,18 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
         <div id="dash-pace-bars"></div>
       </div>
     </div>
+    <div class="card" id="dash-trips-card" style="margin-bottom:1rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <div class="card-title" style="margin-bottom:0;">旅行</div>
+        <div style="display:flex;gap:12px;align-items:center;" class="no-print">
+          <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:5px;cursor:pointer;">
+            <input type="checkbox" id="trip-excl" onchange="toggleTripExcl(this.checked)">旅行支出を通常集計から除く
+          </label>
+          <button class="action-btn" onclick="openTripModal()">＋ 旅行を追加</button>
+        </div>
+      </div>
+      <div id="dash-trips-list"></div>
+    </div>
     <div class="card" id="dash-forecast-card" style="display:none;margin-bottom:1rem;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
         <div class="card-title" style="margin-bottom:0;">将来予測</div>
@@ -1120,6 +1132,24 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
         </ol>
       </div>
       <div class="help-sec">
+        <div class="section-label">PayPay明細の取り込み</div>
+        <ul class="help-list">
+          <li>PayPayアプリ →「取引履歴」→ 右上のダウンロードアイコンから取得したCSVを、そのまま「CSV取り込み」タブにドロップできます（自動判別）</li>
+          <li><strong>チャージは自動で振替扱い</strong>になり集計されません。チャージ元の銀行明細（マネーフォワード側）と実支出（PayPay側）の二重計上を防ぐためです</li>
+          <li>PayPayカード払いはカード明細とも重複します。取り込み後に表示される<strong>「重複を確認」</strong>から、同日・同額のペアを確認してPayPay側を除外できます</li>
+          <li>カテゴリは店名から自動推定します（未分類になったものはカテゴリ統合で整理できます）</li>
+        </ul>
+      </div>
+      <div class="help-sec">
+        <div class="section-label">旅行の切り分け</div>
+        <ul class="help-list">
+          <li>ダッシュボードの「旅行」カードから期間を登録すると、期間内の支出を旅行に紐付けられます</li>
+          <li>他の月に一度も出てこない店（＝普段の生活圏ではない店）は<strong>自動でチェック</strong>されます。サブスク等の定常支出は自動で外れます</li>
+          <li>「旅行支出を通常集計から除く」をONにすると、カテゴリ集計・予算ペース・前月比などから旅行分が外れ、日常の家計だけを見られます</li>
+          <li>旅行ごとに予算を設定でき、合計・1日あたり・予算超過が一覧できます</li>
+        </ul>
+      </div>
+      <div class="help-sec">
         <div class="section-label">データの取り扱い・注意</div>
         <ul class="help-list">
           <li><strong>サーバーには一切送信されません。</strong>ログインもアカウント登録も不要で、データはこのブラウザのlocalStorageだけに保存されます</li>
@@ -1229,6 +1259,78 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
   </div>
 </div>
 
+<!-- MODAL: 旅行の登録・編集 -->
+<div class="modal-bg" id="trip-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="trip-modal-title">旅行を追加</div>
+      <button class="modal-close" onclick="closeTripModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="filter-bar" style="margin-bottom:12px;">
+        <input type="text" id="trip-name" placeholder="旅行名（例：沖縄）" style="width:160px;">
+        <input type="date" id="trip-start" onchange="renderTripCandidates()">
+        <span class="filter-label" style="opacity:.7;">〜</span>
+        <input type="date" id="trip-end" onchange="renderTripCandidates()">
+        <input type="number" id="trip-budget" class="amt-in" placeholder="予算（任意）" min="0" style="width:130px;">
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;line-height:1.7;" id="trip-cand-note">
+        期間内の取引が候補として表示されます。<strong>普段使わない店（他の月に出てこない店）は自動でチェック</strong>されます。サブスク等の定常支出はチェックを外したままにしてください。
+      </div>
+      <div class="table-wrap" style="max-height:44vh;overflow-y:auto;">
+        <table>
+          <thead><tr>
+            <th style="width:44px;text-align:center;">旅行</th>
+            <th style="width:90px;">日付</th>
+            <th>内容</th>
+            <th style="width:100px;">カテゴリ</th>
+            <th style="width:100px;text-align:right;">金額</th>
+          </tr></thead>
+          <tbody id="trip-cand-tbody"></tbody>
+        </table>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;">
+        <button class="action-btn" id="trip-del-btn" style="display:none;color:var(--exp);border-color:var(--exp);" onclick="delTripFromModal()">この旅行を削除</button>
+        <div style="display:flex;gap:8px;margin-left:auto;">
+          <button class="action-btn" onclick="closeTripModal()">キャンセル</button>
+          <button class="action-btn" onclick="saveTripFromModal()" style="border-color:var(--accent-glow);color:var(--accent);">保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: PayPay重複チェック -->
+<div class="modal-bg" id="ppdup-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">PayPay × カード明細の重複候補</div>
+      <button class="modal-close" onclick="closePPDupModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.7;">
+        同じ日付・同じ金額の取引がPayPay明細とカード明細（マネーフォワード側）の両方にあります。チェックした行は<strong>PayPay側を集計から除外</strong>し、カード明細側で集計します（カード払いの行は最初からチェック済み）。
+      </div>
+      <div class="table-wrap" style="max-height:50vh;overflow-y:auto;">
+        <table>
+          <thead><tr>
+            <th style="width:44px;text-align:center;">除外</th>
+            <th style="width:90px;">日付</th>
+            <th style="width:100px;text-align:right;">金額</th>
+            <th>PayPay側</th>
+            <th>カード明細側</th>
+          </tr></thead>
+          <tbody id="ppdup-tbody"></tbody>
+        </table>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;">
+        <button class="action-btn" onclick="closePPDupModal()">キャンセル</button>
+        <button class="action-btn" onclick="applyPPDupExclusion()" style="border-color:var(--accent-glow);color:var(--accent);">チェックした行を除外</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: 全件表示 -->
 <div class="modal-bg" id="all-modal">
   <div class="modal">
@@ -1274,6 +1376,8 @@ let fixedCats = new Set();
 let excludedKeys = new Set(); // 集計から除外する取引（特別支出など）
 let assetGoal = { amt: 0, year: 0 }; // 資産目標（金額・達成年）
 let catColors = {}; // カテゴリ別のグラフ色 {cat: '#rrggbb'}
+let trips = { excl: false, list: [] }; // 旅行 {id,name,start,end,budget} と「通常集計から除外」フラグ
+let tripTags = {}; // 取引→旅行の紐付け {txKey: tripId}
 
 /* UTILS - debounce */
 function debounce(fn, ms) {
@@ -1301,6 +1405,8 @@ function saveStorage() {
     localStorage.setItem('kakeibo_fixed_cats', JSON.stringify([...fixedCats]));
     localStorage.setItem('kakeibo_excluded', JSON.stringify([...excludedKeys]));
     localStorage.setItem('kakeibo_cat_colors', JSON.stringify(catColors));
+    localStorage.setItem('kakeibo_trips', JSON.stringify(trips));
+    localStorage.setItem('kakeibo_trip_tags', JSON.stringify(tripTags));
     saveFailWarned = false;
   } catch(e) {
     // 容量超過等で保存できないのに気づかないままリロードするとデータが消えるため必ず警告する
@@ -1339,6 +1445,10 @@ function loadStorage() {
     if (gl) assetGoal = JSON.parse(gl);
     const cl = localStorage.getItem('kakeibo_cat_colors');
     if (cl) catColors = JSON.parse(cl);
+    const tr = localStorage.getItem('kakeibo_trips');
+    if (tr) { const v = JSON.parse(tr); trips = Array.isArray(v) ? { excl:false, list:v } : v; }
+    const tt = localStorage.getItem('kakeibo_trip_tags');
+    if (tt) tripTags = JSON.parse(tt);
   } catch(e) {}
   invalidateCSVCache();
 }
@@ -1466,6 +1576,82 @@ function processCSV(raw, filename) {
       sub:   f.subCatKey ? r[f.subCatKey] : '',
     };
   }).filter(r=>r.amt!==0);
+}
+
+/* ===== PayPay 取引履歴CSV =====
+   PayPayアプリ → 取引履歴 → ダウンロード で取得できるCSV。
+   列: 取引日 / 出金金額（円）/ 入金金額（円）/ 取引内容 / 取引先 / 取引方法 / 支払い区分 / 取引番号 */
+function isPayPayCSV(raw) {
+  if (!raw.length) return false;
+  const keys = Object.keys(raw[0]);
+  return keys.some(k=>/取引番号/.test(k)) && keys.some(k=>/取引先/.test(k)) && keys.some(k=>/出金金額/.test(k));
+}
+
+/* 店名からの大まかなカテゴリ推定。PayPay CSVにはカテゴリ列が無いための補完。
+   細かい統合はダッシュボードのカテゴリ統合（categoryAliases）で行える */
+const PP_CAT_RULES = [
+  [/セブン|ファミリーマート|ファミマ|ローソン|ミニストップ|デイリーヤマザキ|コンビニ/, 'コンビニ'],
+  [/スーパー|イオン|西友|ライフ|マルエツ|イトーヨーカドー|業務スーパー|成城石井|オーケー/, '食費'],
+  [/マクドナルド|スターバックス|ドトール|すき家|吉野家|松屋|サイゼリヤ|ガスト|ラーメン|カフェ|珈琲|食堂|レストラン|寿司|焼肉|居酒屋/, '食費'],
+  [/JR|鉄道|メトロ|バス|タクシー|交通|ETC|駐車場|パーキング|ガソリン|ENEOS|出光/, '交通費'],
+  [/マツモトキヨシ|ウエルシア|ツルハ|サンドラッグ|スギ薬局|ドラッグ|薬局/, '日用品'],
+  [/ユニクロ|GU|しまむら|洋服|アパレル/, '衣服・美容'],
+  [/病院|クリニック|歯科|医院|調剤/, '健康・医療'],
+  [/Amazon|アマゾン|楽天|ヨドバシ|ビックカメラ|ヤマダ/, '趣味・娯楽'],
+];
+function guessPayPayCat(name) {
+  for (const [re, cat] of PP_CAT_RULES) if (re.test(name)) return cat;
+  return '未分類';
+}
+
+/* PayPay CSV → 内部トランザクション配列。
+   チャージは「銀行→PayPay残高」の資金移動であり、チャージ元の銀行明細（マネーフォワード側）にも
+   同じ出金が載るため、二重計上を避けるべくここでは取り込まない（振替扱い）。
+   ポイント付与・残高処理も実際のキャッシュフローではないため除外する */
+function processPayPayCSV(raw) {
+  const keys = Object.keys(raw[0]);
+  const f = {
+    dateKey:    keys.find(k=>/取引日|利用日/.test(k)),
+    outKey:     keys.find(k=>/出金金額/.test(k)),
+    inKey:      keys.find(k=>/入金金額/.test(k)),
+    contentKey: keys.find(k=>/取引内容/.test(k)),
+    payeeKey:   keys.find(k=>/取引先/.test(k)),
+    methodKey:  keys.find(k=>/取引方法/.test(k)),
+    idKey:      keys.find(k=>/取引番号/.test(k)),
+  };
+  if (!f.dateKey || !f.outKey) return null;
+  const num = s => parseFloat(String(s||'').replace(/[,円\s]/g,'')) || 0;
+  const rows = [];
+  let skipCharge = 0, skipPoint = 0;
+  raw.forEach((r, i) => {
+    const content = f.contentKey ? (r[f.contentKey]||'') : '';
+    const payee   = f.payeeKey ? (r[f.payeeKey]||'') : '';
+    const method  = f.methodKey ? (r[f.methodKey]||'') : '';
+    const out = num(r[f.outKey]);
+    const inn = f.inKey ? num(r[f.inKey]) : 0;
+    if (/チャージ|オートチャージ/.test(content)) { skipCharge++; return; }
+    if (/残高GET|ポイント|ボーナス運用|資産運用|残高処理/.test(content)) { skipPoint++; return; }
+    // 日付を YYYY/MM/DD に正規化（時刻付き・ハイフン区切りに耐える）
+    const dm = String(r[f.dateKey]||'').match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    if (!dm) return;
+    const date = `${dm[1]}/${dm[2].padStart(2,'0')}/${dm[3].padStart(2,'0')}`;
+    const name = payee || content;
+    const isInc = inn > 0 && out === 0;
+    const amt = isInc ? inn : -out;
+    if (amt === 0) return;
+    rows.push({
+      date, name,
+      cat:   isInc ? '収入' : guessPayPayCat(name),
+      amt,
+      type:  isInc ? 'inc' : 'exp',
+      bank:  'PayPay',
+      month: date.slice(0,7),
+      id:    f.idKey && r[f.idKey] ? 'pp:' + r[f.idKey] : '',
+      sub:   '',
+      ...( /カード|クレジット/.test(method) ? { ppCard: true } : {} ),
+    });
+  });
+  return { rows, skipCharge, skipPoint };
 }
 
 /* MANUAL ASSETS */
@@ -1670,7 +1856,19 @@ function loadFiles(files) {
         return;
       }
       const raw = parseCSV(text);
-      const rows = processCSV(raw, file.name);
+      let rows;
+      if (raw.length && isPayPayCSV(raw)) {
+        const res = processPayPayCSV(raw);
+        rows = res && res.rows.length ? res.rows : null;
+        if (rows) {
+          const notes = [];
+          if (res.skipCharge) notes.push(`チャージ${res.skipCharge}件は資金移動のため除外`);
+          if (res.skipPoint)  notes.push(`ポイント等${res.skipPoint}件を除外`);
+          showToast(`「${file.name}」をPayPay CSVとして認識しました（${rows.length}件）。${notes.length ? notes.join('、') + '。' : ''}`, 'info', 7000);
+        }
+      } else {
+        rows = processCSV(raw, file.name);
+      }
       if (!rows) showToast(`「${file.name}」を認識できませんでした。収支CSVまたは資産推移CSVをお使いください。`, 'error', 5000);
       else {
         const dup = countDuplicateRows(rows, file.name);
@@ -1705,14 +1903,70 @@ function renderChips() {
     return;
   }
   const months = uniqueMonths(allCSV());
+  const raw = allCSVRaw();
+  const ppCount = raw.filter(r => r.bank === 'PayPay').length;
+  const tfCount = raw.filter(r => r.tf).length;
+  const dupCount = findPayPayDups().length;
+  const ppBar = ppCount ? `
+    <div class="file-summary-bar" style="border-color:rgba(232,64,64,.25);">
+      <span class="file-summary-icon">🅿️</span>
+      <span class="file-summary-text">PayPay明細 <strong>${ppCount}件</strong>${tfCount ? `　／　チャージ${tfCount}件を振替として集計から除外中` : ''}${dupCount ? `　／　<strong style="color:var(--exp);">カード明細との重複候補 ${dupCount}件</strong>` : ''}</span>
+      ${dupCount ? '<button class="action-btn" onclick="openPPDupModal()">重複を確認</button>' : ''}
+    </div>` : '';
   el.innerHTML = `
     <div class="file-summary-bar">
       <span class="file-summary-icon">📂</span>
       <span class="file-summary-text"><strong>${names.length}件</strong>のCSV読み込み済み（${months.length}ヶ月分）</span>
       <button class="action-btn" onclick="openFileModal()">ファイルを管理</button>
-    </div>`;
+    </div>` + ppBar;
   document.getElementById('cat-alias-card').style.display = 'block';
   renderAliasRows();
+}
+
+/* ===== PayPay × カード明細の重複検出 =====
+   PayPayカード払いの決済は、PayPay明細とマネーフォワード側のカード明細の両方に現れる。
+   「同じ日付・同じ金額」のペアを候補として提示し、PayPay側を除外して二重計上を防ぐ
+   （カード明細側はマネーフォワードのカテゴリが付いているため、そちらを正とする） */
+function findPayPayDups() {
+  const raw = allCSVRaw();
+  const pp = raw.filter(r => r.bank === 'PayPay' && r.type === 'exp' && !excludedKeys.has(txKey(r)));
+  if (!pp.length) return [];
+  const mf = raw.filter(r => r.bank !== 'PayPay' && r.type === 'exp' && !r.tf);
+  const mfByKey = new Map();
+  mf.forEach(r => {
+    const k = r.date + '|' + Math.abs(r.amt);
+    if (!mfByKey.has(k)) mfByKey.set(k, []);
+    mfByKey.get(k).push(r);
+  });
+  const pairs = [];
+  pp.forEach(p => {
+    const hits = mfByKey.get(p.date + '|' + Math.abs(p.amt));
+    if (hits && hits.length) pairs.push({ pp: p, mf: hits[0] });
+  });
+  return pairs;
+}
+
+function openPPDupModal() {
+  const pairs = findPayPayDups();
+  document.getElementById('ppdup-tbody').innerHTML = pairs.map((pair, i) => `
+    <tr>
+      <td style="text-align:center;"><input type="checkbox" class="ppdup-chk" data-k="${esc(txKey(pair.pp))}" ${pair.pp.ppCard ? 'checked' : ''}></td>
+      <td>${esc(pair.pp.date)}</td>
+      <td style="text-align:right;" class="amt-exp">-${fmt(pair.pp.amt)}</td>
+      <td title="${esc(pair.pp.name)}">${esc(pair.pp.name)}${pair.pp.ppCard ? ' <span style="font-size:10px;color:var(--accent);">カード払い</span>' : ''}</td>
+      <td title="${esc(pair.mf.name)}" style="color:var(--text3);">${esc(pair.mf.name)}<span style="font-size:10px;">（${esc(pair.mf.bank.split(' - ')[0])}）</span></td>
+    </tr>`).join('') || '<tr><td colspan="5" style="color:var(--text3);text-align:center;padding:1rem;">重複候補はありません</td></tr>';
+  document.getElementById('ppdup-modal').classList.add('open');
+}
+function closePPDupModal() { document.getElementById('ppdup-modal').classList.remove('open'); }
+function applyPPDupExclusion() {
+  const checked = [...document.querySelectorAll('.ppdup-chk:checked')];
+  if (!checked.length) { closePPDupModal(); return; }
+  checked.forEach(c => excludedKeys.add(c.dataset.k));
+  saveStorage();
+  closePPDupModal();
+  renderChips(); applyCSVFilter(); renderExcludedBar(); renderDashboard();
+  showToast(`${checked.length}件のPayPay側の取引を集計から除外しました（カード明細側で集計されます）`, 'success', 6000);
 }
 
 function openFileModal() {
@@ -1746,19 +2000,32 @@ function isExcluded(r) { return excludedKeys.has(txKey(r)); }
 let _csvCache = { raw: null, active: null };
 function invalidateCSVCache() { _csvCache.raw = null; _csvCache.active = null; }
 
+/* PayPay明細を取り込んでいる場合、マネーフォワード側の「PayPayチャージ」出金は
+   同じ支出がPayPay側の決済明細として数えられるため振替（tf）としてマークする。
+   PayPay明細が無いうちはチャージが唯一の記録なので、そのまま支出として数える */
+const PP_CHARGE_RE = /(PayPay|ペイペイ|ＰａｙＰａｙ|paypay)/i;
+function markPayPayTransfers(rows) {
+  const hasPP = rows.some(r => r.bank === 'PayPay');
+  if (!hasPP) return rows;
+  return rows.map(r =>
+    (r.bank !== 'PayPay' && r.type === 'exp' && PP_CHARGE_RE.test(r.name) && /チャージ/.test(r.name))
+      ? { ...r, tf: true } : r);
+}
 /* 除外を含む全取引（明細表示・除外解除UI用） */
 function allCSVRaw() {
   if (_csvCache.raw) return _csvCache.raw;
-  _csvCache.raw = Object.values(csvFileMap).flat().map(r => {
+  _csvCache.raw = markPayPayTransfers(Object.values(csvFileMap).flat().map(r => {
     const normalizedCat = categoryAliases[r.cat] || r.cat;
     return normalizedCat !== r.cat ? { ...r, cat: normalizedCat } : r;
-  });
+  }));
   return _csvCache.raw;
 }
-/* 集計対象の取引（除外済みを差し引いたもの） */
+/* 集計対象の取引（除外済み・振替を差し引いたもの） */
 function allCSV() {
   if (_csvCache.active) return _csvCache.active;
-  _csvCache.active = excludedKeys.size ? allCSVRaw().filter(r => !isExcluded(r)) : allCSVRaw();
+  let rows = allCSVRaw();
+  if (rows.some(r => r.tf)) rows = rows.filter(r => !r.tf);
+  _csvCache.active = excludedKeys.size ? rows.filter(r => !isExcluded(r)) : rows;
   return _csvCache.active;
 }
 
@@ -2114,16 +2381,18 @@ function renderAssetChart(assets) {
 function rowHtml(r) {
   const key = txKey(r);
   const ex = excludedKeys.has(key);
-  return `<tr class="${ex?'row-excluded':''}">
+  // tf = PayPayチャージ等の振替行。PayPay側の決済明細で数えるため集計対象外
+  const exclCell = r.tf
+    ? `<span style="font-size:11px;color:var(--text3);" title="PayPay明細側で決済として集計されるため、チャージは資金移動（振替）として自動的に除外しています">振替</span>`
+    : `<button class="excl-btn ${ex?'on':''}" data-k="${esc(key)}" onclick="toggleExclude(this.dataset.k)"
+        title="${ex?'集計に戻す':'この取引を集計から除外する（旅行など特別支出の除外に）'}">${ex?'戻す':'除外'}</button>`;
+  return `<tr class="${ex||r.tf?'row-excluded':''}">
     <td>${esc(r.date)}</td>
     <td title="${esc(r.name)}">${esc(r.name)}</td>
     <td><span class="badge ${r.type==='inc'?'badge-inc':'badge-exp'}">${esc(r.cat)}</span></td>
     <td title="${esc(r.bank)}" style="font-size:11px;color:var(--text3);">${esc(r.bank.split(' - ')[0])}</td>
     <td style="text-align:right;" class="${r.type==='inc'?'amt-inc':'amt-exp'}">${r.type==='inc'?'+':'-'}${fmt(r.amt)}</td>
-    <td style="text-align:center;">
-      <button class="excl-btn ${ex?'on':''}" data-k="${esc(key)}" onclick="toggleExclude(this.dataset.k)"
-        title="${ex?'集計に戻す':'この取引を集計から除外する（旅行など特別支出の除外に）'}">${ex?'戻す':'除外'}</button>
-    </td>
+    <td style="text-align:center;">${exclCell}</td>
   </tr>`;
 }
 
@@ -2294,7 +2563,11 @@ function manualTotal(arr) {
 }
 
 function getDashRows() {
-  const all = allCSV();
+  let all = allCSV();
+  // 「旅行支出を通常集計から除く」ON のとき、旅行に紐付けた取引を日常の集計から外す
+  if (trips.excl && Object.keys(tripTags).length) {
+    all = all.filter(r => !tripTags[txKey(r)]);
+  }
   const from = document.getElementById('df-from').value;
   const to   = document.getElementById('df-to').value;
   if (!from && !to) return all;
@@ -2496,7 +2769,150 @@ function renderDashboard() {
   renderBudgetPace();
   renderSubscriptions(allRows);
   renderHeatmap(csvRows);
+  renderTrips();
   initCollapsibles();
+}
+
+/* ===== 旅行 =====
+   旅行を「期間」として登録し、期間内の取引を旅行に紐付けて日常支出と切り分ける。
+   紐付けは txKey ベース（tripTags）なので CSV を再取り込みしても壊れない */
+let editingTripId = null;
+
+function tripDate(v) { return v ? v.replace(/-/g,'/') : ''; } // input[type=date] → YYYY/MM/DD
+function tripTotal(tripId) {
+  let total = 0, n = 0;
+  allCSV().forEach(r => {
+    if (tripTags[txKey(r)] === tripId && r.type === 'exp') { total += Math.abs(r.amt); n++; }
+  });
+  return { total, n };
+}
+function tripDays(t) {
+  const d = (new Date(t.end.replace(/\//g,'-')) - new Date(t.start.replace(/\//g,'-'))) / 86400000;
+  return isNaN(d) ? 1 : Math.max(1, Math.round(d) + 1);
+}
+
+function renderTrips() {
+  const box = document.getElementById('dash-trips-list');
+  if (!box) return;
+  const chk = document.getElementById('trip-excl');
+  if (chk) chk.checked = !!trips.excl;
+  if (!trips.list.length) {
+    box.innerHTML = '<div style="font-size:12px;color:var(--text3);">旅行を登録すると、期間内の支出を日常の家計と分けて集計できます（予算ペース・カテゴリ集計から旅行分を除けます）。</div>';
+    return;
+  }
+  const sorted = [...trips.list].sort((a,b) => b.start.localeCompare(a.start));
+  const yearTotal = sorted.filter(t => t.start.slice(0,4) === String(new Date().getFullYear()))
+    .reduce((s,t) => s + tripTotal(t.id).total, 0);
+  box.innerHTML = sorted.map(t => {
+    const { total, n } = tripTotal(t.id);
+    const days = tripDays(t);
+    const perDay = total / days;
+    const over = t.budget > 0 && total > t.budget;
+    const pct = t.budget > 0 ? Math.min(100, total / t.budget * 100) : 0;
+    return `
+    <div class="bar-row cat-clickable" onclick="openTripModal(${t.id})" title="クリックで編集・取引の付け外し">
+      <div class="bar-label" style="width:130px;" title="${esc(t.name)}">🧳 ${esc(t.name)}</div>
+      <div style="font-size:11px;color:var(--text3);width:150px;flex-shrink:0;">${esc(t.start.slice(5))}〜${esc(t.end.slice(5))}（${days}日間）</div>
+      ${t.budget > 0 ? `<div class="bar-track" style="height:9px;"><div class="bar-fill" style="width:${pct.toFixed(1)}%;background:${over ? 'var(--exp)' : 'var(--asset)'};"></div></div>` : '<div style="flex:1;"></div>'}
+      <div class="bar-right" style="min-width:190px;">
+        <div class="bar-amt">${fmt(total)}${t.budget > 0 ? ` / ${fmt(t.budget)}` : ''}</div>
+        <div class="bar-pct">${n}件・${fmt(perDay)}/日${over ? '　<span style="color:var(--exp);">予算超過</span>' : ''}</div>
+      </div>
+    </div>`;
+  }).join('') + (yearTotal ? `<div style="font-size:12px;color:var(--text2);margin-top:8px;text-align:right;">今年の旅行費合計：<strong style="font-family:'DM Mono',monospace;">${fmt(yearTotal)}</strong></div>` : '');
+}
+
+function toggleTripExcl(v) {
+  trips.excl = v;
+  saveStorage();
+  renderDashboard();
+  showToast(v ? '旅行支出を通常集計から除外しました（旅行カードには表示されます）' : '旅行支出を通常集計に含めました', 'info');
+}
+
+function openTripModal(id) {
+  editingTripId = id ?? null;
+  const t = id != null ? trips.list.find(x => x.id === id) : null;
+  document.getElementById('trip-modal-title').textContent = t ? `旅行を編集 — ${t.name}` : '旅行を追加';
+  document.getElementById('trip-name').value   = t ? t.name : '';
+  document.getElementById('trip-start').value  = t ? t.start.replace(/\//g,'-') : '';
+  document.getElementById('trip-end').value    = t ? t.end.replace(/\//g,'-') : '';
+  document.getElementById('trip-budget').value = t && t.budget ? t.budget : '';
+  document.getElementById('trip-del-btn').style.display = t ? 'inline-block' : 'none';
+  renderTripCandidates();
+  document.getElementById('trip-modal').classList.add('open');
+}
+function closeTripModal() { document.getElementById('trip-modal').classList.remove('open'); }
+
+/* 期間内の支出候補。「他の月に一度も出てこない店」は旅行先の店とみなして自動チェック。
+   これが位置情報を持たないCSVで「普段の地域かどうか」を推定する代替になる */
+function renderTripCandidates() {
+  const start = tripDate(document.getElementById('trip-start').value);
+  const end   = tripDate(document.getElementById('trip-end').value);
+  const tbody = document.getElementById('trip-cand-tbody');
+  if (!start || !end || start > end) {
+    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--text3);text-align:center;padding:1rem;">期間を指定してください</td></tr>';
+    return;
+  }
+  const all = allCSV();
+  // 期間外にも現れる店名 = 日常の店
+  const outsideNames = new Set();
+  all.forEach(r => { if (r.date < start || r.date > end) outsideNames.add(r.name); });
+  const cands = all.filter(r => r.type === 'exp' && r.date >= start && r.date <= end)
+    .sort((a,b) => a.date.localeCompare(b.date));
+  tbody.innerHTML = cands.map(r => {
+    const key = txKey(r);
+    const tagged = tripTags[key];
+    // 編集中は現在の紐付けを表示。新規は「日常の店ではない」ものを提案（他の旅行に紐付け済みは除く）
+    const checked = editingTripId != null
+      ? tagged === editingTripId
+      : (!tagged && !outsideNames.has(r.name));
+    const otherTrip = tagged && tagged !== editingTripId ? trips.list.find(t => t.id === tagged) : null;
+    return `<tr${otherTrip ? ' style="opacity:.5;"' : ''}>
+      <td style="text-align:center;">${otherTrip
+        ? `<span style="font-size:10px;color:var(--text3);" title="別の旅行に紐付け済み">${esc(otherTrip.name)}</span>`
+        : `<input type="checkbox" class="trip-cand-chk" data-k="${esc(key)}" ${checked ? 'checked' : ''}>`}</td>
+      <td>${esc(r.date)}</td>
+      <td title="${esc(r.name)}">${esc(r.name)}</td>
+      <td><span class="badge badge-exp">${esc(r.cat)}</span></td>
+      <td style="text-align:right;" class="amt-exp">-${fmt(r.amt)}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" style="color:var(--text3);text-align:center;padding:1rem;">期間内に取引がありません</td></tr>';
+}
+
+function saveTripFromModal() {
+  const name  = document.getElementById('trip-name').value.trim();
+  const start = tripDate(document.getElementById('trip-start').value);
+  const end   = tripDate(document.getElementById('trip-end').value);
+  const budget = parseInt(document.getElementById('trip-budget').value, 10) || 0;
+  if (!name)  { showToast('旅行名を入力してください', 'error'); return; }
+  if (!start || !end || start > end) { showToast('期間を正しく指定してください', 'error'); return; }
+  let t;
+  if (editingTripId != null) {
+    t = trips.list.find(x => x.id === editingTripId);
+    Object.assign(t, { name, start, end, budget });
+  } else {
+    t = { id: nextId++, name, start, end, budget };
+    trips.list.push(t);
+  }
+  // この旅行の紐付けを一旦すべて外し、チェック済みだけ付け直す
+  Object.keys(tripTags).forEach(k => { if (tripTags[k] === t.id) delete tripTags[k]; });
+  document.querySelectorAll('.trip-cand-chk:checked').forEach(c => { tripTags[c.dataset.k] = t.id; });
+  saveStorage();
+  closeTripModal();
+  renderDashboard();
+  showToast(`「${name}」を保存しました（${Object.values(tripTags).filter(v => v === t.id).length}件の取引を紐付け）`, 'success');
+}
+
+function delTripFromModal() {
+  if (editingTripId == null) return;
+  const t = trips.list.find(x => x.id === editingTripId);
+  if (!confirm(`「${t.name}」を削除します。紐付けた取引は通常集計に戻ります。よろしいですか？`)) return;
+  trips.list = trips.list.filter(x => x.id !== editingTripId);
+  Object.keys(tripTags).forEach(k => { if (tripTags[k] === editingTripId) delete tripTags[k]; });
+  saveStorage();
+  closeTripModal();
+  renderDashboard();
+  showToast(`「${t.name}」を削除しました`, 'info');
 }
 
 /* 取引相手別 純額（収入・支出の両方ある相手のみ） */
@@ -4027,7 +4443,7 @@ function toggleTheme() {
 }
 
 /* ===== データのバックアップ / 復元 ===== */
-const BACKUP_KEYS = ['kakeibo_csv','kakeibo_assets','kakeibo_ah','kakeibo_inc','kakeibo_exp','kakeibo_nextId','kakeibo_budget','kakeibo_cat_aliases','kakeibo_fixed_cats','kakeibo_excluded','kakeibo_collapsed','kakeibo_goal','kakeibo_cat_colors','kakeibo_theme'];
+const BACKUP_KEYS = ['kakeibo_csv','kakeibo_assets','kakeibo_ah','kakeibo_inc','kakeibo_exp','kakeibo_nextId','kakeibo_budget','kakeibo_cat_aliases','kakeibo_fixed_cats','kakeibo_excluded','kakeibo_collapsed','kakeibo_goal','kakeibo_cat_colors','kakeibo_theme','kakeibo_trips','kakeibo_trip_tags'];
 function openDataModal() {
   // 現在のデータ概要を表示
   const txCount = Object.values(csvFileMap).reduce((s,a)=>s+a.length,0);

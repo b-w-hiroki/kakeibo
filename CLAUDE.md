@@ -50,6 +50,17 @@ GitHub Pages 設定: `master` ブランチの `/`（root）を公開。`index.ht
 
 別 CSV として「資産推移」CSV にも対応（`isAssetHistCSV()` で判定して `applyAssetHistData()` に振り分け）。ドロップゾーンは自動判定。
 
+## PayPay 取引履歴 CSV 仕様
+
+取得: PayPay アプリ → 取引履歴 → 右上のダウンロードアイコン → 期間指定（最大365日/回、直近2年）。
+
+- 列: `取引日 / 出金金額（円）/ 入金金額（円）/ 取引内容 / 取引先 / 取引方法 / 支払い区分 / 取引番号`
+- `isPayPayCSV()` でヘッダー判定 → `processPayPayCSV()` で正規化（`bank:"PayPay"`、id は `pp:取引番号`）
+- **チャージ・ポイント付与は取り込まない**（チャージは銀行明細側と二重になるため振替扱い）
+- PayPay 明細が存在するとき、MF 側の「PayPayチャージ」出金行は `markPayPayTransfers()` が `tf:true` を付け、`allCSV()` が集計から外す（明細一覧には「振替」表示で残る）
+- カード払い（`ppCard:true`）はカード明細と重複しうる → `findPayPayDups()` が同日・同額ペアを検出し、`openPPDupModal()` で PayPay 側を `excludedKeys` に入れて除外
+- カテゴリは `guessPayPayCat()` が店名から推定（`PP_CAT_RULES`）
+
 ## 内部データモデル
 
 ```js
@@ -85,6 +96,8 @@ GitHub Pages 設定: `master` ブランチの `/`（root）を公開。`index.ht
 | `collapsedCards` | 折りたたみ中のカードID `Set` | `kakeibo_collapsed`（配列で保存） |
 | `assetGoal` | 資産目標 `{amt, year}` | `kakeibo_goal` |
 | `catColors` | カテゴリ別グラフ色 `{cat: '#rrggbb'}` | `kakeibo_cat_colors` |
+| `trips` | 旅行 `{excl, list:[{id,name,start,end,budget}]}` | `kakeibo_trips` |
+| `tripTags` | 取引→旅行の紐付け `{txKey: tripId}` | `kakeibo_trip_tags` |
 | （テーマ） | `light` / `dark` の選択 | `kakeibo_theme` |
 
 バックアップ対象キーは JS 側の `BACKUP_KEYS` 配列で一元管理。localStorage キーを追加したらここにも足すこと。
@@ -109,6 +122,9 @@ GitHub Pages 設定: `master` ブランチの `/`（root）を公開。`index.ht
 | `openPivotModal()` / `renderPivot()` | 年間表（カテゴリ×月）の表示・CSV出力 |
 | `renderForecast` / `renderSeasonality` | 将来予測（資産・FIRE到達）と月別の季節性 |
 | `suggestBudget()` | 直近6ヶ月の中央値から予算を自動提案 |
+| `isPayPayCSV()` / `processPayPayCSV()` | PayPay 取引履歴 CSV の判定と正規化 |
+| `markPayPayTransfers()` / `findPayPayDups()` | チャージの振替化／カード明細との重複検出 |
+| `renderTrips()` / `openTripModal()` | 旅行の一覧・登録編集（期間内取引の紐付け） |
 | `initCollapsibles()` / `toggleCard(id)` | ダッシュボードカードの折りたたみ |
 | `setQuickRange(kind)` | 期間のクイックフィルタ（今月/先月/直近6ヶ月/今年/全期間） |
 | `loadSampleData()` | 動作確認用のサンプルデータ生成（14ヶ月分） |
