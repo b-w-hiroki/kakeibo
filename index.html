@@ -823,7 +823,7 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
       <div class="card-title">収支推移</div>
       <div class="chart-wrap"><canvas id="csv-line-chart"></canvas></div>
     </div>
-    <div class="card">
+    <div class="card" id="csv-detail-card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <div class="card-title" style="margin-bottom:0;">明細一覧（直近100件）</div>
         <div style="display:flex;gap:8px;align-items:center;">
@@ -836,7 +836,7 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
       <div class="table-wrap table-scroll">
         <table>
           <thead><tr>
-            <th style="width:90px;">日付</th>
+            <th style="width:130px;">日付</th>
             <th>内容</th>
             <th style="width:100px;">カテゴリ</th>
             <th style="width:90px;font-size:11px;">口座</th>
@@ -1433,7 +1433,7 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
       <div class="table-wrap" style="max-height:40vh;overflow-y:auto;">
         <table>
           <thead><tr>
-            <th style="width:90px;">日付</th>
+            <th style="width:130px;">日付</th>
             <th>内容</th>
             <th style="width:90px;font-size:11px;">口座</th>
             <th style="width:110px;text-align:right;">金額</th>
@@ -1468,7 +1468,7 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
         <table>
           <thead><tr>
             <th style="width:44px;text-align:center;">旅行</th>
-            <th style="width:90px;">日付</th>
+            <th style="width:130px;">日付</th>
             <th>内容</th>
             <th style="width:100px;">カテゴリ</th>
             <th style="width:100px;text-align:right;">金額</th>
@@ -1502,7 +1502,7 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
         <table>
           <thead><tr>
             <th style="width:44px;text-align:center;">除外</th>
-            <th style="width:90px;">日付</th>
+            <th style="width:130px;">日付</th>
             <th style="width:100px;text-align:right;">金額</th>
             <th>PayPay側</th>
             <th>カード明細側</th>
@@ -1535,7 +1535,7 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
       <div class="table-wrap" style="max-height:58vh;overflow-y:auto;">
         <table>
           <thead><tr>
-            <th style="width:90px;">日付</th>
+            <th style="width:130px;">日付</th>
             <th>内容</th>
             <th style="width:100px;">カテゴリ</th>
             <th style="width:90px;font-size:11px;">口座</th>
@@ -1632,6 +1632,15 @@ function loadStorage() {
     if (ex) excludedKeys = new Set(JSON.parse(ex));
     const cc = localStorage.getItem('kakeibo_collapsed');
     if (cc) collapsedCards = new Set(JSON.parse(cc));
+    // 「明細一覧」は情報量が多く常時表示だと見づらいため、初回のみ折りたたみ状態で開始する
+    // （ユーザーが一度でも開閉を操作すれば、以降はその選択が優先される）
+    if (!localStorage.getItem('kakeibo_csvdetail_seeded')) {
+      collapsedCards.add('csv-detail-card');
+      try {
+        localStorage.setItem('kakeibo_collapsed', JSON.stringify([...collapsedCards]));
+        localStorage.setItem('kakeibo_csvdetail_seeded', '1');
+      } catch(e) {}
+    }
     const gl = localStorage.getItem('kakeibo_goal');
     if (gl) assetGoal = JSON.parse(gl);
     const cl = localStorage.getItem('kakeibo_cat_colors');
@@ -2266,6 +2275,7 @@ function refreshCSV() {
   if (prev) sel.value = prev;
   applyCSVFilter();
   updateMeta();
+  initCollapsibles();
 }
 
 function applyCSVFilter() {
@@ -3424,7 +3434,7 @@ function exportPivotCSV() {
 /* カードの折りたたみ（開閉状態は localStorage に保存） */
 let collapsedCards = new Set();
 function initCollapsibles() {
-  document.querySelectorAll('#tab-dashboard .card[id]').forEach(card => {
+  document.querySelectorAll('#tab-dashboard .card[id], #tab-csv .card[id]').forEach(card => {
     const head = card.firstElementChild;
     if (!head || head.querySelector('.card-toggle')) return;
     const btn = document.createElement('button');
@@ -4799,7 +4809,7 @@ function toggleTheme() {
 }
 
 /* ===== データのバックアップ / 復元 ===== */
-const BACKUP_KEYS = ['kakeibo_csv','kakeibo_assets','kakeibo_ah','kakeibo_inc','kakeibo_exp','kakeibo_nextId','kakeibo_budget','kakeibo_cat_aliases','kakeibo_fixed_cats','kakeibo_excluded','kakeibo_collapsed','kakeibo_goal','kakeibo_cat_colors','kakeibo_theme','kakeibo_trips','kakeibo_trip_tags','kakeibo_invest_cats'];
+const BACKUP_KEYS = ['kakeibo_csv','kakeibo_assets','kakeibo_ah','kakeibo_inc','kakeibo_exp','kakeibo_nextId','kakeibo_budget','kakeibo_cat_aliases','kakeibo_fixed_cats','kakeibo_excluded','kakeibo_collapsed','kakeibo_goal','kakeibo_cat_colors','kakeibo_theme','kakeibo_trips','kakeibo_trip_tags','kakeibo_invest_cats','kakeibo_csvdetail_seeded'];
 function openDataModal() {
   // 現在のデータ概要を表示
   const txCount = Object.values(csvFileMap).reduce((s,a)=>s+a.length,0);
