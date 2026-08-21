@@ -92,6 +92,7 @@ GitHub Pages 設定: `master` ブランチの `/`（root）を公開。`index.ht
 | `budgetMap` | カテゴリ別予算 `{cat: 金額}` | `kakeibo_budget` |
 | `categoryAliases` | カテゴリ統合エイリアス `{元: 統合先}` | `kakeibo_cat_aliases` |
 | `fixedCats` | 固定費カテゴリ `Set` | `kakeibo_fixed_cats`（配列で保存） |
+| `investCats` | 投資カテゴリ `Set`（NISA・暗号資産・ロボアド等。支出集計から常に分離） | `kakeibo_invest_cats`（配列で保存） |
 | `excludedKeys` | 集計から除外する取引キー `Set` | `kakeibo_excluded`（配列で保存） |
 | `collapsedCards` | 折りたたみ中のカードID `Set` | `kakeibo_collapsed`（配列で保存） |
 | `assetGoal` | 資産目標 `{amt, year}` | `kakeibo_goal` |
@@ -132,6 +133,8 @@ GitHub Pages 設定: `master` ブランチの `/`（root）を公開。`index.ht
 | `renderYearSummary()` / `renderGoal()` | 年次サマリー／資産目標の進捗 |
 | `renderBarChart` / `renderLineChart` / `renderCatBars` | Chart.js 描画 |
 | `renderFixedVariable` | 固定費 vs 変動費 KPI |
+| `getDashRows()` / `allSpendingRows()` | 「消費としての支出」だけに絞った取引（旅行除外ON時のタグ済み取引・投資カテゴリを除く）。前者は期間フィルタ適用、後者は全期間 |
+| `renderInvest()` / `openInvestModal()` | 投資（NISA・暗号資産・ロボアド等）の集計・カテゴリ設定。支出合計から常に分離される |
 | `renderYoY` | 前年同月比 |
 | `renderRecon` | 手動入力 ↔ CSV の照合表 |
 | `renderTaxResult` | 確定申告タブ全体の再計算 |

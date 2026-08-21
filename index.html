@@ -36,7 +36,7 @@ try { if (localStorage.getItem('kakeibo_theme') === 'light') document.documentEl
   --border2:rgba(255,255,255,.14);--text:#f5f3ee;--text2:#cfcbc4;--text3:#938f89;
   --inc:#4ade80;--inc-dim:rgba(74,222,128,.12);--exp:#f87171;--exp-dim:rgba(248,113,113,.12);
   --accent:#e8d5b0;--accent-dim:rgba(232,213,176,.1);--asset:#38bdf8;--asset-dim:rgba(56,189,248,.1);
-  --purple:#a78bfa;--header-bg:rgba(15,15,15,.82);--opt-bg:#222;
+  --purple:#a78bfa;--purple-dim:rgba(167,139,250,.12);--header-bg:rgba(15,15,15,.82);--opt-bg:#222;
   --r:14px;--rs:9px;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px -12px rgba(0,0,0,.55);
   --shadow-hover:0 2px 4px rgba(0,0,0,.35),0 18px 40px -16px rgba(0,0,0,.7);
@@ -48,7 +48,7 @@ try { if (localStorage.getItem('kakeibo_theme') === 'light') document.documentEl
   --border2:rgba(0,0,0,.16);--text:#1c1a17;--text2:#4f4a43;--text3:#7a746b;
   --inc:#15803d;--inc-dim:rgba(21,128,61,.12);--exp:#dc2626;--exp-dim:rgba(220,38,38,.10);
   --accent:#9c6f2e;--accent-dim:rgba(156,111,46,.12);--asset:#0284c7;--asset-dim:rgba(2,132,199,.1);
-  --purple:#7c3aed;--header-bg:rgba(244,242,237,.82);--opt-bg:#fff;
+  --purple:#7c3aed;--purple-dim:rgba(124,58,237,.1);--header-bg:rgba(244,242,237,.82);--opt-bg:#fff;
   --shadow:0 1px 2px rgba(60,50,30,.06),0 10px 28px -16px rgba(60,50,30,.28);
   --shadow-hover:0 2px 6px rgba(60,50,30,.10),0 18px 40px -18px rgba(60,50,30,.4);
   --accent-glow:rgba(156,111,46,.3);
@@ -328,6 +328,26 @@ tr:hover td{background:var(--surface2);}
 .help-dl dd{color:var(--text2);margin-left:0;}
 .help-keys{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--text2);}
 .help-keys > div{display:flex;align-items:center;gap:5px;}
+/* 使い方ガイド：アイコンでの視覚的な説明 */
+.help-icon{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.help-icon svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+.help-flow{display:flex;align-items:flex-start;gap:2px;overflow-x:auto;padding:2px 2px 8px;-webkit-overflow-scrolling:touch;}
+.help-flow-step{display:flex;flex-direction:column;align-items:center;text-align:center;width:120px;flex-shrink:0;}
+.help-flow-step .help-icon{margin-bottom:8px;}
+.help-flow-step .hf-t{font-size:12px;font-weight:600;color:var(--text);margin-bottom:3px;}
+.help-flow-step .hf-d{font-size:11px;color:var(--text3);line-height:1.5;}
+.help-flow-arrow{flex-shrink:0;width:22px;color:var(--text3);opacity:.45;margin-top:17px;}
+.help-flow-arrow svg{width:100%;height:16px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
+.help-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;}
+.help-card{display:flex;gap:10px;padding:10px 11px;border:.5px solid var(--border);border-radius:var(--rs);background:var(--surface2);}
+.help-card .help-icon{width:32px;height:32px;}
+.help-card .help-icon svg{width:16px;height:16px;}
+.help-card .hc-t{font-size:12.5px;font-weight:600;color:var(--text);margin-bottom:2px;}
+.help-card .hc-d{font-size:11.5px;color:var(--text3);line-height:1.55;}
+.help-list-icon{list-style:none;padding-left:0;font-size:13px;color:var(--text2);line-height:1.6;}
+.help-list-icon li{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;}
+.help-list-icon .help-icon{width:26px;height:26px;margin-top:1px;}
+.help-list-icon .help-icon svg{width:14px;height:14px;}
 kbd{display:inline-block;font-family:'DM Mono',monospace;font-size:11px;background:var(--surface2);border:.5px solid var(--border2);border-bottom-width:2px;border-radius:5px;padding:2px 7px;color:var(--text);}
 
 /* PIVOT TABLE */
@@ -503,6 +523,7 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
       <button class="action-btn no-print" onclick="expandAllCards()" title="折りたたんだカードをすべて開く">全カード展開</button>
       <button class="action-btn" onclick="openBudgetModal()">予算設定</button>
       <button class="action-btn no-print" onclick="openFixedModal()">固定費設定</button>
+      <button class="action-btn no-print" onclick="openInvestModal()">投資設定</button>
       <button class="action-btn no-print" onclick="printDashboard()" style="color:var(--accent);border-color:rgba(196,181,253,.3);">🖨 月次レポート</button>
     </div>
     <div class="metrics metrics-4" style="margin-bottom:1.5rem;">
@@ -537,6 +558,18 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
           <div class="metric-sub">支出に占める固定費の割合</div>
         </div>
       </div>
+    </div>
+    <div class="card" id="dash-invest-card" style="display:none;margin-bottom:1.5rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <div class="card-title" style="margin-bottom:0;">投資</div>
+        <span style="font-size:11px;color:var(--text3);">NISA・暗号資産・ロボアド等を支出から分離</span>
+      </div>
+      <div class="metrics" style="margin-bottom:12px;">
+        <div class="metric"><div class="metric-label">投資合計（期間内）</div><div class="metric-value" style="color:var(--purple);" id="inv-total">¥0</div><div class="metric-sub" id="inv-total-sub"></div></div>
+        <div class="metric"><div class="metric-label">月平均</div><div class="metric-value" style="color:var(--purple);" id="inv-avg">¥0</div></div>
+        <div class="metric"><div class="metric-label">累計（全期間）</div><div class="metric-value" style="color:var(--purple);" id="inv-cum">¥0</div></div>
+      </div>
+      <div id="inv-cat-bars"></div>
     </div>
     <div class="grid-2">
       <div class="card" id="dash-month-card">
@@ -1114,9 +1147,42 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
   </div>
 </div>
 
+<!-- アイコンスプライト（使い方ガイド用。テーマ色は currentColor で継承） -->
+<svg style="display:none" aria-hidden="true">
+<defs>
+  <symbol id="hi-file" viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6z"/><path d="M15 2v5h5"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></symbol>
+  <symbol id="hi-upload" viewBox="0 0 24 24"><path d="M12 3v10"/><polyline points="8 7 12 3 16 7"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></symbol>
+  <symbol id="hi-chart" viewBox="0 0 24 24"><line x1="4" y1="20" x2="20" y2="20"/><rect x="5" y="13" width="3" height="7"/><rect x="10.5" y="7" width="3" height="13"/><rect x="16" y="10" width="3" height="10"/></symbol>
+  <symbol id="hi-phone" viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/><line x1="10.5" y1="18" x2="13.5" y2="18"/></symbol>
+  <symbol id="hi-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="6.3" y1="6.3" x2="17.7" y2="17.7"/></symbol>
+  <symbol id="hi-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M4 16V6a2 2 0 0 1 2-2h10"/></symbol>
+  <symbol id="hi-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></symbol>
+  <symbol id="hi-sparkle" viewBox="0 0 24 24"><path d="M11 3l1.7 4.7L17.5 9l-4.8 1.7L11 15.5l-1.7-4.8L4.5 9l4.8-1.7z"/><path d="M18.5 14l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="hi-toggle" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="16" cy="12" r="3" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="hi-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="hi-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="hi-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><line x1="8" y1="20" x2="16" y2="20"/><line x1="12" y1="16" x2="12" y2="20"/></symbol>
+  <symbol id="hi-filetext" viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6z"/><path d="M15 2v5h5"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="15.5" x2="15" y2="15.5"/><line x1="9" y1="19" x2="12" y2="19"/></symbol>
+  <symbol id="hi-trash" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></symbol>
+  <symbol id="hi-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.3" y1="15.3" x2="20.5" y2="20.5"/></symbol>
+  <symbol id="hi-trend" viewBox="0 0 24 24"><polyline points="4 16 10 10 14 13 20 6"/><polyline points="14 6 20 6 20 12"/></symbol>
+  <symbol id="hi-compare" viewBox="0 0 24 24"><line x1="8" y1="20" x2="8" y2="4"/><polyline points="4.5 8 8 4.5 11.5 8"/><line x1="16" y1="4" x2="16" y2="20"/><polyline points="12.5 16 16 19.5 19.5 16"/></symbol>
+  <symbol id="hi-pie" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 8 8h-8z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="hi-refresh" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5.3L21 9"/><polyline points="21 4 21 9 16 9"/><path d="M20 12a8 8 0 0 1-14 5.3L3 15"/><polyline points="3 20 3 15 8 15"/></symbol>
+  <symbol id="hi-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="8 12.5 11 15.5 16 9"/></symbol>
+  <symbol id="hi-collapse" viewBox="0 0 24 24"><polyline points="7 10 12 6 17 10"/><polyline points="7 15 12 19 17 15"/></symbol>
+  <symbol id="hi-table" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1.5"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="4" x2="9" y2="20"/><line x1="15" y1="4" x2="15" y2="20"/></symbol>
+  <symbol id="hi-merge" viewBox="0 0 24 24"><path d="M6 3v6a4 4 0 0 0 4 4h8"/><polyline points="14 9 18 13 14 17"/><line x1="6" y1="13" x2="6" y2="21"/></symbol>
+  <symbol id="hi-keyboard" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><rect x="5" y="9" width="2" height="2" fill="currentColor" stroke="none"/><rect x="9" y="9" width="2" height="2" fill="currentColor" stroke="none"/><rect x="13" y="9" width="2" height="2" fill="currentColor" stroke="none"/><rect x="17" y="9" width="2" height="2" fill="currentColor" stroke="none"/><rect x="6" y="13" width="12" height="2" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="hi-save" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v6h8V4"/><rect x="8" y="14" width="8" height="6"/></symbol>
+  <symbol id="hi-alert" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><line x1="12" y1="9" x2="12" y2="14"/><circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="hi-arrow" viewBox="0 0 24 12"><line x1="2" y1="6" x2="19" y2="6"/><polyline points="14 1 19.5 6 14 11"/></symbol>
+</defs>
+</svg>
+
 <!-- MODAL: 使い方・機能ガイド -->
 <div class="modal-bg" id="help-modal">
-  <div class="modal" style="max-width:720px;">
+  <div class="modal" style="max-width:760px;">
     <div class="modal-head">
       <div class="modal-title">使い方・機能ガイド</div>
       <button class="modal-close" onclick="closeHelpModal()">×</button>
@@ -1124,78 +1190,182 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
     <div class="modal-body">
       <div class="help-sec">
         <div class="section-label">はじめに</div>
-        <p>マネーフォワードMEのCSVを読み込んで、収支・資産・税金を可視化するツールです。<strong>データはすべてこのブラウザ内（localStorage）にのみ保存され、外部に送信されません。</strong></p>
-        <ol class="help-list">
-          <li>マネーフォワードME →「収支」→ 明細 → <strong>CSVダウンロード</strong>（月ごと）</li>
-          <li>「CSV取り込み」タブにドロップ。複数月まとめてOK</li>
-          <li>任意で「資産」→「資産推移」→ 月次 → CSVも取り込むと、資産グラフ・照合・FIRE予測が使えます</li>
-        </ol>
+        <div class="help-flow">
+          <div class="help-flow-step">
+            <div class="help-icon" style="background:var(--accent-dim);color:var(--accent);"><svg><use href="#hi-file"></use></svg></div>
+            <div class="hf-t">CSVダウンロード</div>
+          </div>
+          <div class="help-flow-arrow"><svg viewBox="0 0 24 12"><use href="#hi-arrow"></use></svg></div>
+          <div class="help-flow-step">
+            <div class="help-icon" style="background:var(--asset-dim);color:var(--asset);"><svg><use href="#hi-upload"></use></svg></div>
+            <div class="hf-t">ドロップ</div>
+          </div>
+          <div class="help-flow-arrow"><svg viewBox="0 0 24 12"><use href="#hi-arrow"></use></svg></div>
+          <div class="help-flow-step">
+            <div class="help-icon" style="background:var(--inc-dim);color:var(--inc);"><svg><use href="#hi-chart"></use></svg></div>
+            <div class="hf-t">自動集計</div>
+          </div>
+          <div class="help-flow-arrow"><svg viewBox="0 0 24 12"><use href="#hi-arrow"></use></svg></div>
+          <div class="help-flow-step">
+            <div class="help-icon" style="background:var(--purple-dim);color:var(--purple);"><svg><use href="#hi-trend"></use></svg></div>
+            <div class="hf-t">資産推移CSV（任意）</div>
+          </div>
+        </div>
       </div>
+
       <div class="help-sec">
         <div class="section-label">PayPay明細の取り込み</div>
-        <ul class="help-list">
-          <li>PayPayアプリ →「取引履歴」→ 右上のダウンロードアイコンから取得したCSVを、そのまま「CSV取り込み」タブにドロップできます（自動判別）</li>
-          <li><strong>チャージは自動で振替扱い</strong>になり集計されません。チャージ元の銀行明細（マネーフォワード側）と実支出（PayPay側）の二重計上を防ぐためです</li>
-          <li>PayPayカード払いはカード明細とも重複します。取り込み後に表示される<strong>「重複を確認」</strong>から、同日・同額のペアを確認してPayPay側を除外できます</li>
-          <li>カテゴリは店名から自動推定します（未分類になったものはカテゴリ統合で整理できます）</li>
-        </ul>
+        <div class="help-flow">
+          <div class="help-flow-step">
+            <div class="help-icon" style="background:var(--purple-dim);color:var(--purple);"><svg><use href="#hi-phone"></use></svg></div>
+            <div class="hf-t">アプリから取得</div>
+          </div>
+          <div class="help-flow-arrow"><svg viewBox="0 0 24 12"><use href="#hi-arrow"></use></svg></div>
+          <div class="help-flow-step">
+            <div class="help-icon" style="background:var(--asset-dim);color:var(--asset);"><svg><use href="#hi-upload"></use></svg></div>
+            <div class="hf-t">ドロップで自動判別</div>
+          </div>
+          <div class="help-flow-arrow"><svg viewBox="0 0 24 12"><use href="#hi-arrow"></use></svg></div>
+          <div class="help-flow-step">
+            <div class="help-icon" style="background:var(--exp-dim);color:var(--exp);"><svg><use href="#hi-ban"></use></svg></div>
+            <div class="hf-t">チャージは自動除外</div>
+          </div>
+          <div class="help-flow-arrow"><svg viewBox="0 0 24 12"><use href="#hi-arrow"></use></svg></div>
+          <div class="help-flow-step">
+            <div class="help-icon" style="background:var(--accent-dim);color:var(--accent);"><svg><use href="#hi-copy"></use></svg></div>
+            <div class="hf-t">カード重複を確認</div>
+          </div>
+        </div>
       </div>
+
       <div class="help-sec">
         <div class="section-label">旅行の切り分け</div>
-        <ul class="help-list">
-          <li>ダッシュボードの「旅行」カードから期間を登録すると、期間内の支出を旅行に紐付けられます</li>
-          <li>他の月に一度も出てこない店（＝普段の生活圏ではない店）は<strong>自動でチェック</strong>されます。サブスク等の定常支出は自動で外れます</li>
-          <li>「旅行支出を通常集計から除く」をONにすると、カテゴリ集計・予算ペース・前月比などから旅行分が外れ、日常の家計だけを見られます</li>
-          <li>旅行ごとに予算を設定でき、合計・1日あたり・予算超過が一覧できます</li>
-        </ul>
+        <div class="help-flow">
+          <div class="help-flow-step">
+            <div class="help-icon" style="background:var(--purple-dim);color:var(--purple);"><svg><use href="#hi-calendar"></use></svg></div>
+            <div class="hf-t">期間を登録</div>
+          </div>
+          <div class="help-flow-arrow"><svg viewBox="0 0 24 12"><use href="#hi-arrow"></use></svg></div>
+          <div class="help-flow-step">
+            <div class="help-icon" style="background:var(--accent-dim);color:var(--accent);"><svg><use href="#hi-sparkle"></use></svg></div>
+            <div class="hf-t">取引を自動検出</div>
+          </div>
+          <div class="help-flow-arrow"><svg viewBox="0 0 24 12"><use href="#hi-arrow"></use></svg></div>
+          <div class="help-flow-step">
+            <div class="help-icon" style="background:var(--asset-dim);color:var(--asset);"><svg><use href="#hi-toggle"></use></svg></div>
+            <div class="hf-t">トグルで分離</div>
+          </div>
+          <div class="help-flow-arrow"><svg viewBox="0 0 24 12"><use href="#hi-arrow"></use></svg></div>
+          <div class="help-flow-step">
+            <div class="help-icon" style="background:var(--inc-dim);color:var(--inc);"><svg><use href="#hi-target"></use></svg></div>
+            <div class="hf-t">予算を管理</div>
+          </div>
+        </div>
       </div>
+
       <div class="help-sec">
-        <div class="section-label">データの取り扱い・注意</div>
-        <ul class="help-list">
-          <li><strong>サーバーには一切送信されません。</strong>ログインもアカウント登録も不要で、データはこのブラウザのlocalStorageだけに保存されます</li>
-          <li>裏を返すと<strong>端末の安全性がそのまま上限</strong>になります。共有PCやネットカフェでの利用は避けてください（ブラウザ拡張機能からも読み取れます）</li>
-          <li>「💾 データ」から書き出すバックアップJSONは<strong>暗号化されていない平文</strong>です。保存場所・共有先にご注意ください</li>
-          <li>ブラウザの「サイトデータを削除」やシークレットウィンドウでは<strong>データが消えます</strong>。定期的にバックアップを取ってください</li>
-        </ul>
+        <div class="section-label">投資と支出の分離</div>
+        <div class="help-flow">
+          <div class="help-flow-step">
+            <div class="help-icon" style="background:var(--purple-dim);color:var(--purple);"><svg><use href="#hi-target"></use></svg></div>
+            <div class="hf-t">投資カテゴリを選択</div>
+          </div>
+          <div class="help-flow-arrow"><svg viewBox="0 0 24 12"><use href="#hi-arrow"></use></svg></div>
+          <div class="help-flow-step">
+            <div class="help-icon" style="background:var(--exp-dim);color:var(--exp);"><svg><use href="#hi-ban"></use></svg></div>
+            <div class="hf-t">支出から自動除外</div>
+          </div>
+          <div class="help-flow-arrow"><svg viewBox="0 0 24 12"><use href="#hi-arrow"></use></svg></div>
+          <div class="help-flow-step">
+            <div class="help-icon" style="background:var(--accent-dim);color:var(--accent);"><svg><use href="#hi-pie"></use></svg></div>
+            <div class="hf-t">「投資」カードで確認</div>
+          </div>
+        </div>
       </div>
+
+      <div class="help-sec">
+        <div class="section-label">データの取り扱い</div>
+        <div class="help-grid">
+          <div class="help-card">
+            <div class="help-icon" style="background:var(--asset-dim);color:var(--asset);"><svg><use href="#hi-lock"></use></svg></div>
+            <div class="card-body"><div class="hc-t">サーバー送信なし</div><div class="hc-d">ブラウザ内にのみ保存</div></div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:var(--exp-dim);color:var(--exp);"><svg><use href="#hi-monitor"></use></svg></div>
+            <div class="card-body"><div class="hc-t">共有PCは要注意</div><div class="hc-d">端末の安全性が上限に</div></div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:var(--exp-dim);color:var(--exp);"><svg><use href="#hi-filetext"></use></svg></div>
+            <div class="card-body"><div class="hc-t">バックアップは平文</div><div class="hc-d">JSONは暗号化なし</div></div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:var(--accent-dim);color:var(--accent);"><svg><use href="#hi-trash"></use></svg></div>
+            <div class="card-body"><div class="hc-t">削除で消えます</div><div class="hc-d">定期的にバックアップを</div></div>
+          </div>
+        </div>
+      </div>
+
       <div class="help-sec">
         <div class="section-label">ダッシュボードの見方</div>
-        <dl class="help-dl">
-          <dt>今月のインサイト</dt><dd>過去平均との比較、増えたカテゴリ、初めての支出先、大口取引、データの抜け月を自動で指摘します。</dd>
-          <dt>将来予測</dt><dd>直近12ヶ月の貯蓄ペースから資産の推移とFIRE到達年を推定（運用益は含みません）。13ヶ月以上のデータがあれば月別の季節性も表示。</dd>
-          <dt>前月比較</dt><dd>直近2ヶ月のカテゴリ別増減。行をクリックすると内訳へ。</dd>
-          <dt>貯蓄率／予算ペース</dt><dd>貯蓄率の推移と、今月の予算消化ペース（縦線が月の経過位置。⚠は超過見込み）。</dd>
-          <dt>定期支出（サブスク検出）</dt><dd>3ヶ月以上ほぼ同額で続く支出を自動検出。解約し忘れの発見に。</dd>
-          <dt>収支照合チェック</dt><dd>資産の増減と収支差引のズレを月ごとに表示。投資損益や記録漏れの目安です。</dd>
-        </dl>
+        <div class="help-grid">
+          <div class="help-card">
+            <div class="help-icon" style="background:var(--accent-dim);color:var(--accent);"><svg><use href="#hi-search"></use></svg></div>
+            <div class="card-body"><div class="hc-t">今月のインサイト</div><div class="hc-d">変化を自動で指摘</div></div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:var(--inc-dim);color:var(--inc);"><svg><use href="#hi-trend"></use></svg></div>
+            <div class="card-body"><div class="hc-t">将来予測</div><div class="hc-d">資産・FIREを推定</div></div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:var(--asset-dim);color:var(--asset);"><svg><use href="#hi-compare"></use></svg></div>
+            <div class="card-body"><div class="hc-t">前月比較</div><div class="hc-d">カテゴリ別の増減</div></div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:var(--purple-dim);color:var(--purple);"><svg><use href="#hi-pie"></use></svg></div>
+            <div class="card-body"><div class="hc-t">貯蓄率／予算ペース</div><div class="hc-d">今月の消化ペース</div></div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:var(--accent-dim);color:var(--accent);"><svg><use href="#hi-refresh"></use></svg></div>
+            <div class="card-body"><div class="hc-t">サブスク検出</div><div class="hc-d">解約し忘れの発見に</div></div>
+          </div>
+          <div class="help-card">
+            <div class="help-icon" style="background:var(--inc-dim);color:var(--inc);"><svg><use href="#hi-check"></use></svg></div>
+            <div class="card-body"><div class="hc-t">収支照合</div><div class="hc-d">資産増減とのズレ</div></div>
+          </div>
+        </div>
       </div>
+
       <div class="help-sec">
         <div class="section-label">便利な操作</div>
-        <ul class="help-list">
-          <li><strong>カテゴリのバーをクリック</strong> → 内訳・月別推移・支出先ランキングを表示</li>
-          <li><strong>明細の「除外」</strong> → 旅行など特別な支出を集計から外して実力値を見る（いつでも解除可）</li>
-          <li><strong>カードのタイトルをクリック</strong> → 折りたたみ（状態は保存されます）</li>
-          <li><strong>📊 年間表</strong> → カテゴリ×12ヶ月の一覧。CSV出力も可能</li>
-          <li><strong>予算設定 → ✨実績から自動提案</strong> → 直近6ヶ月の中央値で予算を一括入力</li>
-          <li><strong>カテゴリ名の統合</strong>（CSV取り込みタブ）→ 表記ゆれを1つのカテゴリにまとめる</li>
+        <ul class="help-list-icon">
+          <li><div class="help-icon" style="background:var(--accent-dim);color:var(--accent);"><svg><use href="#hi-search"></use></svg></div><div><strong>カテゴリのバー</strong> → 内訳を表示</div></li>
+          <li><div class="help-icon" style="background:var(--exp-dim);color:var(--exp);"><svg><use href="#hi-ban"></use></svg></div><div><strong>明細の「除外」</strong> → 集計から一時的に外す</div></li>
+          <li><div class="help-icon" style="background:var(--asset-dim);color:var(--asset);"><svg><use href="#hi-collapse"></use></svg></div><div><strong>カードのタイトル</strong> → 折りたたみ</div></li>
+          <li><div class="help-icon" style="background:var(--purple-dim);color:var(--purple);"><svg><use href="#hi-table"></use></svg></div><div><strong>年間表</strong> → カテゴリ×月の一覧</div></li>
+          <li><div class="help-icon" style="background:var(--accent-dim);color:var(--accent);"><svg><use href="#hi-sparkle"></use></svg></div><div><strong>予算設定</strong> → 実績から自動提案</div></li>
+          <li><div class="help-icon" style="background:var(--inc-dim);color:var(--inc);"><svg><use href="#hi-merge"></use></svg></div><div><strong>カテゴリ統合</strong> → 表記ゆれをまとめる</div></li>
         </ul>
       </div>
+
       <div class="help-sec">
         <div class="section-label">キーボードショートカット</div>
         <div class="help-keys">
           <div><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd><span>タブ切替</span></div>
-          <div><kbd>/</kbd><span>明細を検索</span></div>
-          <div><kbd>?</kbd><span>このガイド</span></div>
-          <div><kbd>Esc</kbd><span>モーダルを閉じる</span></div>
+          <div><kbd>/</kbd><span>検索</span></div>
+          <div><kbd>?</kbd><span>ガイド</span></div>
+          <div><kbd>Esc</kbd><span>閉じる</span></div>
         </div>
       </div>
+
       <div class="help-sec">
-        <div class="section-label">データの保全</div>
-        <p>ブラウザのデータを消すと家計データも消えます。<strong>「💾 データ」からバックアップJSONを定期的に書き出す</strong>ことをおすすめします。別の端末への引っ越しにも使えます。</p>
-      </div>
-      <div class="help-sec">
-        <div class="section-label">注意</div>
-        <p>確定申告タブの計算は<strong>参考値</strong>です。実際の申告は e-Tax または税務署でご確認ください。将来予測・ふるさと納税の上限も簡易計算による目安です。</p>
+        <div class="help-card" style="background:transparent;">
+          <div class="help-icon" style="background:var(--accent-dim);color:var(--accent);"><svg><use href="#hi-save"></use></svg></div>
+          <div class="card-body"><div class="hc-t">データの保全</div><div class="hc-d">定期的にバックアップを。端末の引っ越しにも使えます</div></div>
+        </div>
+        <div class="help-card" style="background:transparent;margin-top:8px;">
+          <div class="help-icon" style="background:var(--exp-dim);color:var(--exp);"><svg><use href="#hi-alert"></use></svg></div>
+          <div class="card-body"><div class="hc-t">確定申告タブについて</div><div class="hc-d">計算は参考値です。実際の申告はe-Tax等でご確認を</div></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1373,6 +1543,7 @@ let csvChart = null, dashChart = null, csvLineChart = null, dashLineChart = null
 let budgetMap = {};
 let categoryAliases = {};
 let fixedCats = new Set();
+let investCats = new Set(); // 投資（NISA・暗号資産・ロボアド等）として支出集計から分離するカテゴリ
 let excludedKeys = new Set(); // 集計から除外する取引（特別支出など）
 let assetGoal = { amt: 0, year: 0 }; // 資産目標（金額・達成年）
 let catColors = {}; // カテゴリ別のグラフ色 {cat: '#rrggbb'}
@@ -1403,6 +1574,7 @@ function saveStorage() {
     localStorage.setItem('kakeibo_budget', JSON.stringify(budgetMap));
     localStorage.setItem('kakeibo_cat_aliases', JSON.stringify(categoryAliases));
     localStorage.setItem('kakeibo_fixed_cats', JSON.stringify([...fixedCats]));
+    localStorage.setItem('kakeibo_invest_cats', JSON.stringify([...investCats]));
     localStorage.setItem('kakeibo_excluded', JSON.stringify([...excludedKeys]));
     localStorage.setItem('kakeibo_cat_colors', JSON.stringify(catColors));
     localStorage.setItem('kakeibo_trips', JSON.stringify(trips));
@@ -1437,6 +1609,8 @@ function loadStorage() {
     if (aliases) categoryAliases = JSON.parse(aliases);
     const fc = localStorage.getItem('kakeibo_fixed_cats');
     if (fc) fixedCats = new Set(JSON.parse(fc));
+    const ic = localStorage.getItem('kakeibo_invest_cats');
+    if (ic) investCats = new Set(JSON.parse(ic));
     const ex = localStorage.getItem('kakeibo_excluded');
     if (ex) excludedKeys = new Set(JSON.parse(ex));
     const cc = localStorage.getItem('kakeibo_collapsed');
@@ -2562,16 +2736,35 @@ function manualTotal(arr) {
   return arr.filter(manualInRange).reduce((s, r) => s + (r.amt || 0), 0);
 }
 
-function getDashRows() {
+function applyPeriodFilter(rows) {
+  const from = document.getElementById('df-from').value;
+  const to   = document.getElementById('df-to').value;
+  if (!from && !to) return rows;
+  return rows.filter(r=>(!from||r.month>=from)&&(!to||r.month<=to));
+}
+
+/* 「消費としての支出」だけを対象にした全期間の取引（期間フィルタは適用しない）。
+   旅行タグ（除外ON時）と投資カテゴリは、支出パターンの分析（インサイト・サブスク検出等）を
+   歪めるためここで常に除く */
+function allSpendingRows() {
   let all = allCSV();
-  // 「旅行支出を通常集計から除く」ON のとき、旅行に紐付けた取引を日常の集計から外す
   if (trips.excl && Object.keys(tripTags).length) {
     all = all.filter(r => !tripTags[txKey(r)]);
   }
-  const from = document.getElementById('df-from').value;
-  const to   = document.getElementById('df-to').value;
-  if (!from && !to) return all;
-  return all.filter(r=>(!from||r.month>=from)&&(!to||r.month<=to));
+  if (investCats.size) {
+    all = all.filter(r => !(r.type === 'exp' && investCats.has(r.cat)));
+  }
+  return all;
+}
+
+function getDashRows() {
+  return applyPeriodFilter(allSpendingRows());
+}
+
+/* 投資カテゴリに分類された取引（期間フィルタのみ適用。旅行除外の影響は受けない） */
+function getInvestRows() {
+  if (!investCats.size) return [];
+  return applyPeriodFilter(allCSV().filter(r => r.type === 'exp' && investCats.has(r.cat)));
 }
 
 /* DASHBOARD */
@@ -2685,6 +2878,68 @@ function renderFixedVariable(rows) {
   section.style.display = 'block';
 }
 
+/* ④ 投資（NISA・暗号資産・ロボアド等） */
+const INVEST_CAT_RE = /投資|nisa|つみたて|積立|暗号資産|仮想通貨|ビットコイン|イーサ|crypto|ロボアド|wealthnavi|theo|楽ラップ|証券|投信|信託/i;
+const investPalette = ['#a78bfa','#c4b5fd','#818cf8','#38bdf8','#4ade80','#e8d5b0'];
+
+function renderInvest() {
+  const card = document.getElementById('dash-invest-card');
+  const rows = getInvestRows();
+  if (!investCats.size || !rows.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  const total = rows.reduce((s, r) => s + Math.abs(r.amt), 0);
+  const months = uniqueMonths(rows).length || 1;
+  const cumTotal = allCSV().filter(r => r.type === 'exp' && investCats.has(r.cat)).reduce((s, r) => s + Math.abs(r.amt), 0);
+  document.getElementById('inv-total').textContent = fmt(total);
+  document.getElementById('inv-total-sub').textContent = rows.length + '件';
+  document.getElementById('inv-avg').textContent = fmt(total / months);
+  document.getElementById('inv-cum').textContent = fmt(cumTotal);
+
+  const catMap = {};
+  rows.forEach(r => { catMap[r.cat] = (catMap[r.cat] || 0) + Math.abs(r.amt); });
+  const entries = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
+  const max = entries[0] ? entries[0][1] : 1;
+  document.getElementById('inv-cat-bars').innerHTML = entries.map(([c, v], i) => `
+    <div class="bar-row cat-clickable" onclick="openCatModal(this.dataset.c)" data-c="${esc(c)}" title="クリックで「${esc(c)}」の内訳を表示">
+      <div class="bar-label" title="${esc(c)}">${esc(c)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(v/max*100).toFixed(1)}%;background:${investPalette[i%investPalette.length]};"></div></div>
+      <div class="bar-right"><div class="bar-amt">${fmt(v)}</div><div class="bar-pct">${(v/total*100).toFixed(1)}%</div></div>
+    </div>`).join('');
+}
+
+function openInvestModal() {
+  const all = allCSV();
+  const cats = [...new Set(all.filter(r => r.type === 'exp').map(r => r.cat))].sort();
+  document.getElementById('invest-modal-list').innerHTML = cats.map(cat => {
+    const total = all.filter(r => r.type === 'exp' && r.cat === cat).reduce((s, r) => s + Math.abs(r.amt), 0);
+    const checked = investCats.has(cat) || (!investCats.size && INVEST_CAT_RE.test(cat));
+    return `
+      <div class="exp-check-item">
+        <input type="checkbox" id="ic-${encodeURIComponent(cat)}" ${checked ? 'checked' : ''}>
+        <label for="ic-${encodeURIComponent(cat)}">${esc(cat)}</label>
+        <span class="exp-check-amt">${fmt(total)}</span>
+      </div>`;
+  }).join('') || '<div style="font-size:12px;color:var(--text3);">CSVを取り込むとカテゴリが表示されます</div>';
+  document.getElementById('invest-modal').classList.add('open');
+}
+
+function closeInvestModal() {
+  document.getElementById('invest-modal').classList.remove('open');
+}
+
+function saveInvestCats() {
+  const all = allCSV();
+  const cats = [...new Set(all.filter(r => r.type === 'exp').map(r => r.cat))].sort();
+  investCats = new Set(cats.filter(cat => {
+    const el = document.getElementById('ic-' + encodeURIComponent(cat));
+    return el && el.checked;
+  }));
+  saveStorage();
+  closeInvestModal();
+  renderDashboard();
+  showToast('投資カテゴリの設定を保存しました', 'success');
+}
+
 function openFixedModal() {
   const all = allCSV();
   const cats = [...new Set(all.filter(r => r.type === 'exp').map(r => r.cat))].sort();
@@ -2761,13 +3016,14 @@ function renderDashboard() {
   if (hasAsset) renderAssetChart(validAssets);
   renderYoY(csvRows);
   renderFixedVariable(csvRows);
+  renderInvest();
   renderCounterparty(csvRows);
-  renderInsights(allRows);
+  renderInsights(allSpendingRows());
   renderForecast(csvRows);
   renderMoM(csvRows);
   renderSavings(csvRows);
   renderBudgetPace();
-  renderSubscriptions(allRows);
+  renderSubscriptions(allSpendingRows());
   renderHeatmap(csvRows);
   renderTrips();
   initCollapsibles();
@@ -4443,7 +4699,7 @@ function toggleTheme() {
 }
 
 /* ===== データのバックアップ / 復元 ===== */
-const BACKUP_KEYS = ['kakeibo_csv','kakeibo_assets','kakeibo_ah','kakeibo_inc','kakeibo_exp','kakeibo_nextId','kakeibo_budget','kakeibo_cat_aliases','kakeibo_fixed_cats','kakeibo_excluded','kakeibo_collapsed','kakeibo_goal','kakeibo_cat_colors','kakeibo_theme','kakeibo_trips','kakeibo_trip_tags'];
+const BACKUP_KEYS = ['kakeibo_csv','kakeibo_assets','kakeibo_ah','kakeibo_inc','kakeibo_exp','kakeibo_nextId','kakeibo_budget','kakeibo_cat_aliases','kakeibo_fixed_cats','kakeibo_excluded','kakeibo_collapsed','kakeibo_goal','kakeibo_cat_colors','kakeibo_theme','kakeibo_trips','kakeibo_trip_tags','kakeibo_invest_cats'];
 function openDataModal() {
   // 現在のデータ概要を表示
   const txCount = Object.values(csvFileMap).reduce((s,a)=>s+a.length,0);
@@ -4595,6 +4851,22 @@ document.addEventListener('DOMContentLoaded', () => {
       <div style="margin-top:1rem;display:flex;justify-content:flex-end;gap:8px;">
         <button class="action-btn" onclick="closeFixedModal()">キャンセル</button>
         <button class="action-btn" style="color:var(--accent);border-color:rgba(196,181,253,.3);" onclick="saveFixedCats()">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-bg" id="invest-modal">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-head">
+      <div class="modal-title">投資カテゴリの設定</div>
+      <button class="modal-close" onclick="closeInvestModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:1rem;">NISA・暗号資産・ロボアド等、資産振替のカテゴリにチェック（自動判定済み）。支出合計から分離し「投資」カードに集計します。</div>
+      <div id="invest-modal-list"></div>
+      <div style="margin-top:1rem;display:flex;justify-content:flex-end;gap:8px;">
+        <button class="action-btn" onclick="closeInvestModal()">キャンセル</button>
+        <button class="action-btn" style="color:var(--purple);border-color:var(--purple);" onclick="saveInvestCats()">保存</button>
       </div>
     </div>
   </div>
