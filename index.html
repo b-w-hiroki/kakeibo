@@ -75,6 +75,16 @@ header{border-bottom:.5px solid var(--border);padding:1rem 1.5rem;display:flex;a
 .tab:hover:not(.active){color:var(--text);}
 .panel{display:none;padding:1.5rem;}.panel.active{display:block;animation:panel-in .28s ease;}
 @keyframes panel-in{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+/* ダッシュボード内サブタブ（縦スクロールを分割し、目的別に見やすくする） */
+.dash-subtab-bar{display:flex;gap:6px;margin-bottom:1.5rem;border-bottom:.5px solid var(--border);padding-bottom:0;overflow-x:auto;scrollbar-width:none;}
+.dash-subtab-bar::-webkit-scrollbar{display:none;}
+.dash-subtab{display:flex;align-items:center;gap:6px;padding:.55rem 1rem;font-size:13px;font-weight:500;color:var(--text2);background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-.5px;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;transition:color .15s,border-color .15s;}
+.dash-subtab:hover:not(.active){color:var(--text);}
+.dash-subtab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
+.dash-subtab .dst-icon{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
+.dash-subpanel{display:none;}
+.dash-subpanel.active{display:block;animation:panel-in .2s ease;}
+@media print{.dash-subpanel{display:block!important;}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 :is(button,select,input,a):focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--rs);}
 
@@ -535,218 +545,234 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
       <div class="metric"><div class="metric-label">収支バランス</div><div class="metric-value" id="db">¥0</div><div class="metric-sub" id="db-sub"></div></div>
       <div class="metric"><div class="metric-label">月平均支出</div><div class="metric-value v-exp" id="da">¥0</div><div class="metric-sub" id="da-sub"></div></div>
     </div>
-    <div class="card" id="dash-insights-card" style="display:none;margin-bottom:1.5rem;">
-      <div class="card-title">今月のインサイト</div>
-      <ul id="dash-insights-list" class="insight-list"></ul>
+    <div class="dash-subtab-bar no-print">
+      <button class="dash-subtab" data-sub="overview" onclick="switchDashSubtab('overview')"><svg class="dst-icon"><use href="#hi-chart"></use></svg>概要</button>
+      <button class="dash-subtab" data-sub="assets" onclick="switchDashSubtab('assets')"><svg class="dst-icon"><use href="#hi-pie"></use></svg>資産・投資</button>
+      <button class="dash-subtab" data-sub="analysis" onclick="switchDashSubtab('analysis')"><svg class="dst-icon"><use href="#hi-search"></use></svg>分析・その他</button>
     </div>
-    <div id="dash-yoy-section" style="display:none;margin-bottom:1.5rem;">
-      <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">前年同月比</div>
-      <div id="dash-yoy-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--border);border:.5px solid var(--border);border-radius:var(--r);overflow:hidden;"></div>
-    </div>
-    <div id="dash-fixed-section" style="display:none;margin-bottom:1.5rem;">
-      <div class="metrics" style="margin-bottom:0;">
-        <div class="metric">
-          <div class="metric-label">固定費合計</div>
-          <div class="metric-value v-exp" id="df-fixed">¥0</div>
-          <div class="metric-sub" id="df-fixed-sub"></div>
-        </div>
-        <div class="metric">
-          <div class="metric-label">変動費合計</div>
-          <div class="metric-value v-exp" id="df-variable">¥0</div>
-          <div class="metric-sub" id="df-variable-sub"></div>
-        </div>
-        <div class="metric">
-          <div class="metric-label">固定費率</div>
-          <div class="metric-value" id="df-fixed-pct" style="color:var(--accent);">—</div>
-          <div class="metric-sub">支出に占める固定費の割合</div>
+
+    <!-- 概要：毎回チェックしたい収支の全体像 -->
+    <div class="dash-subpanel" id="dashsub-overview">
+      <div class="card" id="dash-insights-card" style="display:none;margin-bottom:1.5rem;">
+        <div class="card-title">今月のインサイト</div>
+        <ul id="dash-insights-list" class="insight-list"></ul>
+      </div>
+      <div id="dash-yoy-section" style="display:none;margin-bottom:1.5rem;">
+        <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">前年同月比</div>
+        <div id="dash-yoy-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--border);border:.5px solid var(--border);border-radius:var(--r);overflow:hidden;"></div>
+      </div>
+      <div id="dash-fixed-section" style="display:none;margin-bottom:1.5rem;">
+        <div class="metrics" style="margin-bottom:0;">
+          <div class="metric">
+            <div class="metric-label">固定費合計</div>
+            <div class="metric-value v-exp" id="df-fixed">¥0</div>
+            <div class="metric-sub" id="df-fixed-sub"></div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">変動費合計</div>
+            <div class="metric-value v-exp" id="df-variable">¥0</div>
+            <div class="metric-sub" id="df-variable-sub"></div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">固定費率</div>
+            <div class="metric-value" id="df-fixed-pct" style="color:var(--accent);">—</div>
+            <div class="metric-sub">支出に占める固定費の割合</div>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="card" id="dash-invest-card" style="display:none;margin-bottom:1.5rem;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-        <div class="card-title" style="margin-bottom:0;">投資</div>
-        <span style="font-size:11px;color:var(--text3);">NISA・暗号資産・ロボアド等を支出から分離</span>
-      </div>
-      <div class="metrics" style="margin-bottom:12px;">
-        <div class="metric"><div class="metric-label">投資合計（期間内）</div><div class="metric-value" style="color:var(--purple);" id="inv-total">¥0</div><div class="metric-sub" id="inv-total-sub"></div></div>
-        <div class="metric"><div class="metric-label">月平均</div><div class="metric-value" style="color:var(--purple);" id="inv-avg">¥0</div></div>
-        <div class="metric"><div class="metric-label">累計（全期間）</div><div class="metric-value" style="color:var(--purple);" id="inv-cum">¥0</div></div>
-      </div>
-      <div id="inv-cat-bars"></div>
-    </div>
-    <div class="grid-2">
-      <div class="card" id="dash-month-card">
-        <div class="card-title">月別収支</div>
-        <div class="legend">
-          <span><span class="legend-dot" style="background:rgba(74,222,128,.7)"></span>収入</span>
-          <span><span class="legend-dot" style="background:rgba(248,113,113,.7)"></span>支出</span>
+      <div class="grid-2">
+        <div class="card" id="dash-month-card">
+          <div class="card-title">月別収支</div>
+          <div class="legend">
+            <span><span class="legend-dot" style="background:rgba(74,222,128,.7)"></span>収入</span>
+            <span><span class="legend-dot" style="background:rgba(248,113,113,.7)"></span>支出</span>
+          </div>
+          <div class="chart-wrap-lg"><canvas id="dash-month-chart"></canvas></div>
         </div>
-        <div class="chart-wrap-lg"><canvas id="dash-month-chart"></canvas></div>
-      </div>
-      <div class="card" id="dash-line-card">
-        <div class="card-title">収支推移</div>
-        <div class="legend">
-          <span><span class="legend-dot" style="background:#e8d5b0;border-radius:50%;"></span>月次収支</span>
+        <div class="card" id="dash-line-card">
+          <div class="card-title">収支推移</div>
+          <div class="legend">
+            <span><span class="legend-dot" style="background:#e8d5b0;border-radius:50%;"></span>月次収支</span>
+          </div>
+          <div class="chart-wrap-lg"><canvas id="dash-line-chart"></canvas></div>
         </div>
-        <div class="chart-wrap-lg"><canvas id="dash-line-chart"></canvas></div>
       </div>
-    </div>
-    <div class="grid-2">
       <div class="card" id="dash-cat-card">
         <div class="card-title">支出カテゴリ</div>
         <div id="dash-cat-bars"></div>
       </div>
-      <div class="card" id="dash-asset-card" style="display:none">
-        <div class="card-title">資産内訳</div>
-        <div class="chart-wrap-sm"><canvas id="dash-asset-chart"></canvas></div>
-        <div id="dash-asset-list" style="margin-top:1rem;"></div>
-      </div>
-      <div class="card" id="dash-no-asset-card">
-        <div class="card-title">資産内訳</div>
-        <div style="font-size:12px;color:var(--text3);padding:6px 0;">口座残高を入力すると表示されます</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:4px;">「CSV取り込み」タブ → 口座・資産残高 から入力</div>
-      </div>
     </div>
-    <!-- Counterparty net section (shown when there are name-matched inc/exp pairs) -->
-    <div class="grid-2">
-      <div class="card" id="dash-savings-card" style="display:none;">
-        <div class="card-title">貯蓄率の推移</div>
-        <div id="dash-savings-summary" style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px;"></div>
-        <div class="chart-wrap-sm"><canvas id="dash-savings-chart"></canvas></div>
+
+    <!-- 資産・投資：資産の増減と将来の見通し -->
+    <div class="dash-subpanel" id="dashsub-assets">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1rem;margin-bottom:1rem;">
+        <div class="card" id="dash-asset-card" style="display:none">
+          <div class="card-title">資産内訳</div>
+          <div class="chart-wrap-sm"><canvas id="dash-asset-chart"></canvas></div>
+          <div id="dash-asset-list" style="margin-top:1rem;"></div>
+        </div>
+        <div class="card" id="dash-no-asset-card">
+          <div class="card-title">資産内訳</div>
+          <div style="font-size:12px;color:var(--text3);padding:6px 0;">口座残高を入力すると表示されます</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">「CSV取り込み」タブ → 口座・資産残高 から入力</div>
+        </div>
+        <div class="card" id="dash-invest-card" style="display:none;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+            <div class="card-title" style="margin-bottom:0;">投資</div>
+            <span style="font-size:11px;color:var(--text3);">NISA・暗号資産・ロボアド等を支出から分離</span>
+          </div>
+          <div class="metrics" style="margin-bottom:12px;">
+            <div class="metric"><div class="metric-label">投資合計（期間内）</div><div class="metric-value" style="color:var(--purple);" id="inv-total">¥0</div><div class="metric-sub" id="inv-total-sub"></div></div>
+            <div class="metric"><div class="metric-label">月平均</div><div class="metric-value" style="color:var(--purple);" id="inv-avg">¥0</div></div>
+            <div class="metric"><div class="metric-label">累計（全期間）</div><div class="metric-value" style="color:var(--purple);" id="inv-cum">¥0</div></div>
+          </div>
+          <div id="inv-cat-bars"></div>
+        </div>
       </div>
-      <div class="card" id="dash-pace-card" style="display:none;">
+      <div class="card" id="dash-forecast-card" style="display:none;margin-bottom:1rem;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-          <div class="card-title" style="margin-bottom:0;">今月の予算ペース</div>
-          <span style="font-size:11px;color:var(--text3);" id="dash-pace-note"></span>
+          <div class="card-title" style="margin-bottom:0;">将来予測</div>
+          <span style="font-size:11px;color:var(--text3);">現在の貯蓄ペースが続いた場合の推定（運用益は含みません）</span>
         </div>
-        <div id="dash-pace-bars"></div>
-      </div>
-    </div>
-    <div class="card" id="dash-trips-card" style="margin-bottom:1rem;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-        <div class="card-title" style="margin-bottom:0;">旅行</div>
-        <div style="display:flex;gap:12px;align-items:center;" class="no-print">
-          <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:5px;cursor:pointer;">
-            <input type="checkbox" id="trip-excl" onchange="toggleTripExcl(this.checked)">旅行支出を通常集計から除く
-          </label>
-          <button class="action-btn" onclick="openTripModal()">＋ 旅行を追加</button>
+        <div id="dash-forecast-summary" style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:1rem;"></div>
+        <div class="goal-row no-print">
+          <span class="filter-label">資産目標：</span>
+          <input type="number" id="goal-amt" class="amt-in" placeholder="目標額（円）" min="0" style="width:150px;" oninput="saveGoal()">
+          <span class="filter-label" style="opacity:.7;">まで</span>
+          <input type="number" id="goal-year" class="amt-in" placeholder="年" min="2020" max="2100" style="width:90px;" oninput="saveGoal()">
+          <span class="filter-label" style="opacity:.7;">年</span>
+          <button class="action-btn" onclick="clearGoal()">クリア</button>
+        </div>
+        <div id="dash-goal-result" style="margin-bottom:1rem;"></div>
+        <div class="chart-wrap-sm" style="margin-bottom:1rem;"><canvas id="dash-forecast-chart"></canvas></div>
+        <div id="dash-season" style="display:none;">
+          <div class="section-label" style="margin-top:4px;">月別の支出傾向（季節性）</div>
+          <div id="dash-season-bars"></div>
         </div>
       </div>
-      <div id="dash-trips-list"></div>
-    </div>
-    <div class="card" id="dash-forecast-card" style="display:none;margin-bottom:1rem;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-        <div class="card-title" style="margin-bottom:0;">将来予測</div>
-        <span style="font-size:11px;color:var(--text3);">現在の貯蓄ペースが続いた場合の推定（運用益は含みません）</span>
-      </div>
-      <div id="dash-forecast-summary" style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:1rem;"></div>
-      <div class="goal-row no-print">
-        <span class="filter-label">資産目標：</span>
-        <input type="number" id="goal-amt" class="amt-in" placeholder="目標額（円）" min="0" style="width:150px;" oninput="saveGoal()">
-        <span class="filter-label" style="opacity:.7;">まで</span>
-        <input type="number" id="goal-year" class="amt-in" placeholder="年" min="2020" max="2100" style="width:90px;" oninput="saveGoal()">
-        <span class="filter-label" style="opacity:.7;">年</span>
-        <button class="action-btn" onclick="clearGoal()">クリア</button>
-      </div>
-      <div id="dash-goal-result" style="margin-bottom:1rem;"></div>
-      <div class="chart-wrap-sm" style="margin-bottom:1rem;"><canvas id="dash-forecast-chart"></canvas></div>
-      <div id="dash-season" style="display:none;">
-        <div class="section-label" style="margin-top:4px;">月別の支出傾向（季節性）</div>
-        <div id="dash-season-bars"></div>
-      </div>
-    </div>
-    <div class="card" id="dash-mom-card" style="display:none;margin-bottom:1rem;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-        <div class="card-title" style="margin-bottom:0;">前月比較（カテゴリ別）</div>
-        <span style="font-size:11px;color:var(--text3);" id="dash-mom-note"></span>
-      </div>
-      <div style="overflow-x:auto;"><table class="recon-table" id="dash-mom-table">
-        <thead><tr>
-          <th style="text-align:left;">カテゴリ</th>
-          <th id="mom-th-prev">先月</th>
-          <th id="mom-th-cur">今月</th>
-          <th>増減</th>
-          <th>変化率</th>
-        </tr></thead>
-        <tbody id="dash-mom-body"></tbody>
-      </table></div>
-    </div>
-    <div class="card" id="dash-subs-card" style="display:none;margin-bottom:1rem;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-        <div class="card-title" style="margin-bottom:0;">定期支出（サブスク検出）</div>
-        <span style="font-size:11px;color:var(--text3);">3ヶ月以上ほぼ同額で続く支出を全期間から自動検出（推定）</span>
-      </div>
-      <div style="overflow-x:auto;"><table class="recon-table" id="dash-subs-table">
-        <thead><tr>
-          <th style="text-align:left;">支出先</th>
-          <th>月額（中央値）</th>
-          <th>継続月数</th>
-          <th>最終確認月</th>
-          <th>年額換算</th>
-        </tr></thead>
-        <tbody id="dash-subs-body"></tbody>
-      </table></div>
-      <div id="dash-subs-total" style="margin-top:10px;font-size:13px;color:var(--text2);"></div>
-    </div>
-    <div class="card" id="dash-heat-card" style="display:none;margin-bottom:1rem;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-        <div class="card-title" style="margin-bottom:0;">日別支出ヒートマップ</div>
-        <span style="font-size:11px;color:var(--text3);">直近26週・色が濃いほど支出が多い日</span>
-      </div>
-      <div class="heatmap-scroll"><div id="dash-heatmap" class="heatmap-grid"></div></div>
-    </div>
-    <div class="card" id="dash-cp-card" style="display:none;margin-bottom:1rem;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
-        <div class="card-title" style="margin-bottom:0;">取引相手別 純額</div>
-        <span style="font-size:11px;color:var(--text3);">「内容」が同じで <b>収入と支出の両方</b> がある相手のみ表示・純額の絶対値順</span>
-      </div>
-      <div style="overflow-x:auto;max-height:420px;overflow-y:auto;">
-        <table class="cp-table">
-          <thead><tr>
-            <th>相手（内容）</th>
-            <th style="text-align:right;">件数</th>
-            <th style="text-align:right;color:var(--inc);">入合計</th>
-            <th style="text-align:right;color:var(--exp);">出合計</th>
-            <th style="text-align:right;">純額</th>
-          </tr></thead>
-          <tbody id="dash-cp-body"></tbody>
-        </table>
-      </div>
-    </div>
-    <!-- Asset History Section (shown when assetHistory is loaded) -->
-    <div id="dash-ah-section" style="display:none">
-      <div class="metrics metrics-4" style="margin-bottom:1rem;">
-        <div class="metric"><div class="metric-label">現在の総資産</div><div class="metric-value" style="color:var(--purple);" id="ah-total">¥0</div><div class="metric-sub" id="ah-total-sub"></div></div>
-        <div class="metric"><div class="metric-label">前月比</div><div class="metric-value" id="ah-mom">—</div><div class="metric-sub" id="ah-mom-sub"></div></div>
-        <div class="metric"><div class="metric-label">年初比（今年）</div><div class="metric-value" id="ah-yoy">—</div><div class="metric-sub" id="ah-yoy-sub"></div></div>
-        <div class="metric"><div class="metric-label">照合ずれ（直近月）</div><div class="metric-value" id="ah-gap">—</div><div class="metric-sub" id="ah-gap-sub"></div></div>
-      </div>
-      <div class="card" id="dash-ahchart-card" style="margin-bottom:1rem;">
-        <div class="card-title">総資産推移</div>
-        <div class="legend">
-          <span><span class="legend-dot" style="background:#a78bfa;border-radius:50%;"></span>総資産</span>
-          <span><span class="legend-dot" style="background:#4ade80;"></span>預金・現金</span>
-          <span><span class="legend-dot" style="background:#38bdf8;"></span>投資信託</span>
-          <span><span class="legend-dot" style="background:#f87171;"></span>株式</span>
-          <span><span class="legend-dot" style="background:#fb923c;"></span>年金</span>
+      <!-- Asset History Section (shown when assetHistory is loaded) -->
+      <div id="dash-ah-section" style="display:none">
+        <div class="metrics metrics-4" style="margin-bottom:1rem;">
+          <div class="metric"><div class="metric-label">現在の総資産</div><div class="metric-value" style="color:var(--purple);" id="ah-total">¥0</div><div class="metric-sub" id="ah-total-sub"></div></div>
+          <div class="metric"><div class="metric-label">前月比</div><div class="metric-value" id="ah-mom">—</div><div class="metric-sub" id="ah-mom-sub"></div></div>
+          <div class="metric"><div class="metric-label">年初比（今年）</div><div class="metric-value" id="ah-yoy">—</div><div class="metric-sub" id="ah-yoy-sub"></div></div>
+          <div class="metric"><div class="metric-label">照合ずれ（直近月）</div><div class="metric-value" id="ah-gap">—</div><div class="metric-sub" id="ah-gap-sub"></div></div>
         </div>
-        <div class="chart-wrap-lg"><canvas id="dash-ah-chart"></canvas></div>
+        <div class="card" id="dash-ahchart-card" style="margin-bottom:1rem;">
+          <div class="card-title">総資産推移</div>
+          <div class="legend">
+            <span><span class="legend-dot" style="background:#a78bfa;border-radius:50%;"></span>総資産</span>
+            <span><span class="legend-dot" style="background:#4ade80;"></span>預金・現金</span>
+            <span><span class="legend-dot" style="background:#38bdf8;"></span>投資信託</span>
+            <span><span class="legend-dot" style="background:#f87171;"></span>株式</span>
+            <span><span class="legend-dot" style="background:#fb923c;"></span>年金</span>
+          </div>
+          <div class="chart-wrap-lg"><canvas id="dash-ah-chart"></canvas></div>
+        </div>
+        <div class="card" id="dash-recon-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+            <div class="card-title" style="margin-bottom:0;">収支照合チェック</div>
+            <span style="font-size:11px;color:var(--text3);">資産増減 vs 収入−支出 の差（投資損益・未記録取引等を反映）</span>
+          </div>
+          <div style="overflow-x:auto;"><table class="recon-table" id="dash-recon-table">
+            <thead><tr>
+              <th>月</th>
+              <th data-tip="資産の増減と収支差引のズレ判定。OK=5万円未満／要確認=5万〜30万円／要調査=30万円以上。各行にマウスを乗せると要因が表示されます" style="cursor:help;">状態</th>
+              <th>期末資産</th><th>資産増減</th>
+              <th>収入</th><th>支出</th><th>収支差引</th>
+              <th data-tip="資産増減 − 収支差引。投資損益や記録漏れ等で発生します" style="cursor:help;">ずれ</th>
+            </tr></thead>
+            <tbody id="dash-recon-body"></tbody>
+          </table></div>
+        </div>
       </div>
-      <div class="card" id="dash-recon-card">
+    </div>
+
+    <!-- 分析・その他：頻度は低いが掘り下げたいとき用 -->
+    <div class="dash-subpanel" id="dashsub-analysis">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1rem;margin-bottom:1rem;">
+        <div class="card" id="dash-savings-card" style="display:none;">
+          <div class="card-title">貯蓄率の推移</div>
+          <div id="dash-savings-summary" style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px;"></div>
+          <div class="chart-wrap-sm"><canvas id="dash-savings-chart"></canvas></div>
+        </div>
+        <div class="card" id="dash-pace-card" style="display:none;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+            <div class="card-title" style="margin-bottom:0;">今月の予算ペース</div>
+            <span style="font-size:11px;color:var(--text3);" id="dash-pace-note"></span>
+          </div>
+          <div id="dash-pace-bars"></div>
+        </div>
+      </div>
+      <div class="card" id="dash-trips-card" style="margin-bottom:1rem;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-          <div class="card-title" style="margin-bottom:0;">収支照合チェック</div>
-          <span style="font-size:11px;color:var(--text3);">資産増減 vs 収入−支出 の差（投資損益・未記録取引等を反映）</span>
+          <div class="card-title" style="margin-bottom:0;">旅行</div>
+          <div style="display:flex;gap:12px;align-items:center;" class="no-print">
+            <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:5px;cursor:pointer;">
+              <input type="checkbox" id="trip-excl" onchange="toggleTripExcl(this.checked)">旅行支出を通常集計から除く
+            </label>
+            <button class="action-btn" onclick="openTripModal()">＋ 旅行を追加</button>
+          </div>
         </div>
-        <div style="overflow-x:auto;"><table class="recon-table" id="dash-recon-table">
+        <div id="dash-trips-list"></div>
+      </div>
+      <div class="card" id="dash-mom-card" style="display:none;margin-bottom:1rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <div class="card-title" style="margin-bottom:0;">前月比較（カテゴリ別）</div>
+          <span style="font-size:11px;color:var(--text3);" id="dash-mom-note"></span>
+        </div>
+        <div style="overflow-x:auto;"><table class="recon-table" id="dash-mom-table">
           <thead><tr>
-            <th>月</th>
-            <th data-tip="資産の増減と収支差引のズレ判定。OK=5万円未満／要確認=5万〜30万円／要調査=30万円以上。各行にマウスを乗せると要因が表示されます" style="cursor:help;">状態</th>
-            <th>期末資産</th><th>資産増減</th>
-            <th>収入</th><th>支出</th><th>収支差引</th>
-            <th data-tip="資産増減 − 収支差引。投資損益や記録漏れ等で発生します" style="cursor:help;">ずれ</th>
+            <th style="text-align:left;">カテゴリ</th>
+            <th id="mom-th-prev">先月</th>
+            <th id="mom-th-cur">今月</th>
+            <th>増減</th>
+            <th>変化率</th>
           </tr></thead>
-          <tbody id="dash-recon-body"></tbody>
+          <tbody id="dash-mom-body"></tbody>
         </table></div>
+      </div>
+      <div class="card" id="dash-subs-card" style="display:none;margin-bottom:1rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <div class="card-title" style="margin-bottom:0;">定期支出（サブスク検出）</div>
+          <span style="font-size:11px;color:var(--text3);">3ヶ月以上ほぼ同額で続く支出を全期間から自動検出（推定）</span>
+        </div>
+        <div style="overflow-x:auto;"><table class="recon-table" id="dash-subs-table">
+          <thead><tr>
+            <th style="text-align:left;">支出先</th>
+            <th>月額（中央値）</th>
+            <th>継続月数</th>
+            <th>最終確認月</th>
+            <th>年額換算</th>
+          </tr></thead>
+          <tbody id="dash-subs-body"></tbody>
+        </table></div>
+        <div id="dash-subs-total" style="margin-top:10px;font-size:13px;color:var(--text2);"></div>
+      </div>
+      <div class="card" id="dash-heat-card" style="display:none;margin-bottom:1rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <div class="card-title" style="margin-bottom:0;">日別支出ヒートマップ</div>
+          <span style="font-size:11px;color:var(--text3);">直近26週・色が濃いほど支出が多い日</span>
+        </div>
+        <div class="heatmap-scroll"><div id="dash-heatmap" class="heatmap-grid"></div></div>
+      </div>
+      <div class="card" id="dash-cp-card" style="display:none;margin-bottom:1rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
+          <div class="card-title" style="margin-bottom:0;">取引相手別 純額</div>
+          <span style="font-size:11px;color:var(--text3);">「内容」が同じで <b>収入と支出の両方</b> がある相手のみ表示・純額の絶対値順</span>
+        </div>
+        <div style="overflow-x:auto;max-height:420px;overflow-y:auto;">
+          <table class="cp-table">
+            <thead><tr>
+              <th>相手（内容）</th>
+              <th style="text-align:right;">件数</th>
+              <th style="text-align:right;color:var(--inc);">入合計</th>
+              <th style="text-align:right;color:var(--exp);">出合計</th>
+              <th style="text-align:right;">純額</th>
+            </tr></thead>
+            <tbody id="dash-cp-body"></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -1561,6 +1587,7 @@ let budgetMap = {};
 let categoryAliases = {};
 let fixedCats = new Set();
 let investCats = new Set(); // 投資（NISA・暗号資産・ロボアド等）として支出集計から分離するカテゴリ
+let dashSubtab = 'overview'; // ダッシュボード内サブタブ（overview/assets/analysis）の選択状態
 let excludedKeys = new Set(); // 集計から除外する取引（特別支出など）
 let assetGoal = { amt: 0, year: 0 }; // 資産目標（金額・達成年）
 let catColors = {}; // カテゴリ別のグラフ色 {cat: '#rrggbb'}
@@ -3053,6 +3080,7 @@ function renderDashboard() {
   renderSubscriptions(allSpendingRows());
   renderHeatmap(csvRows);
   renderTrips();
+  applyDashSubtab();
   initCollapsibles();
 }
 
@@ -3433,6 +3461,21 @@ function exportPivotCSV() {
 
 /* カードの折りたたみ（開閉状態は localStorage に保存） */
 let collapsedCards = new Set();
+/* ダッシュボード内サブタブ（概要／資産・投資／分析・その他）。
+   縦に伸びすぎるのを防ぐための目的別グルーピング。期間フィルタと上部KPIは
+   全サブタブ共通なので外側に置いたまま、詳細カード群だけを切り替える */
+function applyDashSubtab() {
+  document.querySelectorAll('.dash-subtab').forEach(b => b.classList.toggle('active', b.dataset.sub === dashSubtab));
+  document.querySelectorAll('.dash-subpanel').forEach(p => p.classList.toggle('active', p.id === 'dashsub-' + dashSubtab));
+}
+function switchDashSubtab(id) {
+  if (dashSubtab === id) return;
+  dashSubtab = id;
+  applyDashSubtab();
+  // 非表示中に作られたcanvasは幅0で描画されてしまうため、表示後に再描画して整合させる
+  renderDashboard();
+}
+
 function initCollapsibles() {
   document.querySelectorAll('#tab-dashboard .card[id], #tab-csv .card[id]').forEach(card => {
     const head = card.firstElementChild;
