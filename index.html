@@ -4210,10 +4210,10 @@ function reconTooltip(month, gap, assetChg, netInc) {
   else if (abs < 300000) head = `要確認：ズレ ${fmt(abs)}（5万〜30万円）。${dir}`;
   else                   head = `要調査：ズレ ${fmt(abs)}（30万円以上）。${dir}`;
   const causes = abs < 50000 ? '' :
-    '【主な要因】 ' +
-    '・投資商品の評価損益（含み益・含み損） ' +
-    '・CSVに未記録の入出金や現金移動 ' +
-    '・ポイント／給与天引き等の資産反映 ' +
+    '【主な要因】\n' +
+    '・投資商品の評価損益（含み益・含み損）\n' +
+    '・CSVに未記録の入出金や現金移動\n' +
+    '・ポイント／給与天引き等の資産反映\n' +
     '・口座残高の手動入力と実残高の差';
   const detail = `期末資産の増減 ${assetChg!==null?fmtSgn(assetChg):'—'} − 収支差引 ${netInc!==null?fmtSgn(netInc):'—'} = ズレ ${fmtSgn(gap)}`;
   return `${head}\n${detail}${causes ? '\n'+causes : ''}`;
