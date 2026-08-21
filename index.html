@@ -277,9 +277,7 @@ tr:hover td{background:var(--surface2);}
   /* 追加カードの可読性（印刷は白地） */
   .recon-table td,.recon-table th,.pivot-table td,.pivot-table th{color:#111!important;border-color:#ddd!important;}
   .insight-list li{color:#111!important;}
-  .heat-cell{border:.5px solid #eee;}
   .mom-up{color:#dc2626!important;}.mom-down{color:#059669!important;}
-  #dash-heat-card{display:none!important;} /* ヒートマップは白黒印刷で潰れるため除外 */
   header{display:flex!important;background:#fff!important;border-bottom:1px solid #ddd!important;color:#111!important;}
   header .header-meta{display:none!important;}
   .logo{background:none!important;-webkit-text-fill-color:#111!important;color:#111!important;}
@@ -399,19 +397,6 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
 .insight-list li::before{content:"";position:absolute;left:4px;top:9px;width:7px;height:7px;border-radius:50%;background:var(--accent);}
 .insight-list li.warn::before{background:var(--exp);}
 .insight-list li.good::before{background:var(--inc);}
-
-/* HEATMAP */
-.heatmap-scroll{overflow-x:auto;padding-bottom:4px;}
-.heatmap-grid{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,12px);gap:3px;width:max-content;}
-.heat-cell{width:12px;height:12px;border-radius:2.5px;background:var(--surface2);}
-.heat-cell.l1{background:rgba(248,113,113,.25);}
-.heat-cell.l2{background:rgba(248,113,113,.45);}
-.heat-cell.l3{background:rgba(248,113,113,.68);}
-.heat-cell.l4{background:rgba(248,113,113,.95);}
-:root[data-theme="light"] .heat-cell.l1{background:rgba(220,38,38,.18);}
-:root[data-theme="light"] .heat-cell.l2{background:rgba(220,38,38,.38);}
-:root[data-theme="light"] .heat-cell.l3{background:rgba(220,38,38,.62);}
-:root[data-theme="light"] .heat-cell.l4{background:rgba(220,38,38,.9);}
 
 /* MODAL */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
@@ -748,13 +733,6 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
           <tbody id="dash-subs-body"></tbody>
         </table></div>
         <div id="dash-subs-total" style="margin-top:10px;font-size:13px;color:var(--text2);"></div>
-      </div>
-      <div class="card" id="dash-heat-card" style="display:none;margin-bottom:1rem;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-          <div class="card-title" style="margin-bottom:0;">日別支出ヒートマップ</div>
-          <span style="font-size:11px;color:var(--text3);">直近26週・色が濃いほど支出が多い日</span>
-        </div>
-        <div class="heatmap-scroll"><div id="dash-heatmap" class="heatmap-grid"></div></div>
       </div>
       <div class="card" id="dash-cp-card" style="display:none;margin-bottom:1rem;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
@@ -3078,7 +3056,6 @@ function renderDashboard() {
   renderSavings(csvRows);
   renderBudgetPace();
   renderSubscriptions(allSpendingRows());
-  renderHeatmap(csvRows);
   renderTrips();
   applyDashSubtab();
   initCollapsibles();
@@ -4072,40 +4049,6 @@ function renderMoM(csvRows) {
       <td class="${totalCur-totalPrev > 0 ? 'mom-up' : 'mom-down'}">${totalCur-totalPrev >= 0 ? '+' : '-'}${fmt(totalCur-totalPrev)}</td>
       <td class="${totalCur-totalPrev > 0 ? 'mom-up' : 'mom-down'}">${totalPrev > 0 ? ((totalCur-totalPrev)/totalPrev*100).toFixed(0)+'%' : '—'}</td>
     </tr>`;
-}
-
-/* 日別支出ヒートマップ（直近26週） */
-function renderHeatmap(csvRows) {
-  const card = document.getElementById('dash-heat-card');
-  const exp = csvRows.filter(r => r.type === 'exp' && /^\d{4}[-/]\d{2}[-/]\d{2}/.test(r.date));
-  if (!exp.length) { card.style.display = 'none'; return; }
-  const byDay = {};
-  exp.forEach(r => { const d = r.date.slice(0, 10).replace(/-/g, '/'); byDay[d] = (byDay[d]||0) + Math.abs(r.amt); });
-  const dates = Object.keys(byDay).sort();
-  const lastDate = new Date(dates[dates.length-1].replace(/\//g, '-') + 'T00:00:00');
-  if (isNaN(lastDate)) { card.style.display = 'none'; return; }
-  card.style.display = 'block';
-  // 最終日を含む週の日曜始まりから遡って26週
-  const end = new Date(lastDate);
-  end.setDate(end.getDate() + (6 - end.getDay()));
-  const start = new Date(end);
-  start.setDate(start.getDate() - 26 * 7 + 1);
-  const vals = [];
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    const key = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
-    if (byDay[key]) vals.push(byDay[key]);
-  }
-  const sortedVals = [...vals].sort((a, b) => a - b);
-  const q = p => sortedVals.length ? sortedVals[Math.min(sortedVals.length-1, Math.floor(sortedVals.length * p))] : 0;
-  const t1 = q(0.25), t2 = q(0.5), t3 = q(0.75);
-  let html = '';
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    const key = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
-    const v = byDay[key] || 0;
-    const lvl = v === 0 ? '' : v <= t1 ? 'l1' : v <= t2 ? 'l2' : v <= t3 ? 'l3' : 'l4';
-    html += `<div class="heat-cell ${lvl}" title="${key}${v ? '　' + fmt(v) : ''}"></div>`;
-  }
-  document.getElementById('dash-heatmap').innerHTML = html;
 }
 
 /* META */
