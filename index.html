@@ -758,11 +758,20 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
 
 <!-- CSV TAB -->
 <div class="panel" id="tab-csv">
-  <div class="note">マネーフォワードME → 収支グラフ → 明細 → CSVダウンロード　で取得できます。複数月まとめてドロップ可能です。</div>
-  <div class="drop-zone" id="dropzone" onclick="document.getElementById('csvfile').click()">
-    <div class="drop-title">収支CSVをここにドロップ</div>
-    <div class="drop-sub">複数ファイル同時OK・追加読み込みOK　/ クリックしてファイル選択</div>
-    <input type="file" id="csvfile" accept=".csv" multiple style="display:none">
+  <div class="filter-bar" style="margin-bottom:1rem;">
+    <span class="filter-label" style="flex:1;font-weight:400;color:var(--text2);">マネーフォワードME・PayPayのCSVを取り込んで収支を可視化します</span>
+    <button class="action-btn" style="color:var(--accent);border-color:var(--accent-glow);" onclick="openCsvUploadModal()">📁 CSVを取り込む</button>
+  </div>
+  <div id="csv-empty-hint" style="display:none;text-align:center;padding:3rem 0;color:var(--text2);">
+    <div style="font-size:32px;margin-bottom:.75rem;">📂</div>
+    <div style="font-size:15px;color:var(--text);margin-bottom:1.25rem;font-weight:600;">まだCSVが取り込まれていません</div>
+    <button class="onboard-btn" style="margin:0 auto;" onclick="openCsvUploadModal()">
+      <span style="font-size:22px;">📁</span>
+      <div>
+        <div style="font-weight:600;margin-bottom:3px;">CSVを取り込む</div>
+        <div style="font-size:12px;color:var(--text2);font-weight:400;">マネーフォワードME・PayPayに対応</div>
+      </div>
+    </button>
   </div>
   <div id="file-summary"></div>
   <div class="card no-print" id="cat-alias-card" style="margin-bottom:1rem;display:none;">
@@ -775,11 +784,6 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
       <button class="add-btn" onclick="addAliasRow()">+ 統合ルールを追加</button>
       <button class="action-btn" onclick="saveAliases()">保存して再集計</button>
     </div>
-  </div>
-  <div class="drop-zone ah-zone" id="asset-hist-dropzone" onclick="document.getElementById('assethistfile').click()" style="border-color:rgba(167,139,250,.3);">
-    <div class="drop-title" style="color:var(--purple);">資産推移CSVをここにドロップ（任意）</div>
-    <div class="drop-sub">マネーフォワードME → 資産 → 資産推移 → 月次 → CSVダウンロード</div>
-    <input type="file" id="assethistfile" accept=".csv" style="display:none">
   </div>
   <div id="asset-hist-summary"></div>
   <div class="card" style="margin-bottom:1rem;">
@@ -795,7 +799,6 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
     </div>
     <input type="file" id="assetbalancefile" accept=".csv" style="display:none" onchange="if(this.files.length)importAssetsFromCSV(this.files);this.value='';">
   </div>
-  <div class="err" id="err-msg"></div>
 
   <div id="csv-summary" style="display:none">
     <div id="excluded-bar"></div>
@@ -850,6 +853,30 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
           <tbody id="csv-tbody"></tbody>
         </table>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CSVを取り込む -->
+<div class="modal-bg" id="csv-upload-modal">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-head">
+      <div class="modal-title">CSVを取り込む</div>
+      <button class="modal-close" onclick="closeCsvUploadModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="note" style="margin-bottom:1rem;">マネーフォワードME → 収支グラフ → 明細 → CSVダウンロード　で取得できます。複数月まとめてドロップ可能です。PayPayの取引履歴CSVもそのままドロップできます。</div>
+      <div class="drop-zone" id="dropzone" onclick="document.getElementById('csvfile').click()">
+        <div class="drop-title">収支CSVをここにドロップ</div>
+        <div class="drop-sub">複数ファイル同時OK・追加読み込みOK　/ クリックしてファイル選択</div>
+        <input type="file" id="csvfile" accept=".csv" multiple style="display:none">
+      </div>
+      <div class="drop-zone ah-zone" id="asset-hist-dropzone" onclick="document.getElementById('assethistfile').click()" style="border-color:rgba(167,139,250,.3);margin-top:1rem;">
+        <div class="drop-title" style="color:var(--purple);">資産推移CSVをここにドロップ（任意）</div>
+        <div class="drop-sub">マネーフォワードME → 資産 → 資産推移 → 月次 → CSVダウンロード</div>
+        <input type="file" id="assethistfile" accept=".csv" style="display:none">
+      </div>
+      <div class="err" id="err-msg"></div>
     </div>
   </div>
 </div>
@@ -2101,6 +2128,7 @@ function loadFiles(files) {
 function renderChips() {
   const names = Object.keys(csvFileMap);
   const el = document.getElementById('file-summary');
+  document.getElementById('csv-empty-hint').style.display = names.length ? 'none' : 'block';
   if (!names.length) {
     el.innerHTML='';
     document.getElementById('cat-alias-card').style.display='none';
@@ -2172,6 +2200,14 @@ function applyPPDupExclusion() {
   closePPDupModal();
   renderChips(); applyCSVFilter(); renderExcludedBar(); renderDashboard();
   showToast(`${checked.length}件のPayPay側の取引を集計から除外しました（カード明細側で集計されます）`, 'success', 6000);
+}
+
+function openCsvUploadModal() {
+  document.getElementById('err-msg').textContent = '';
+  document.getElementById('csv-upload-modal').classList.add('open');
+}
+function closeCsvUploadModal() {
+  document.getElementById('csv-upload-modal').classList.remove('open');
 }
 
 function openFileModal() {
@@ -4899,7 +4935,8 @@ initTheme();
 loadStorage();
 renderManual();
 renderAssetRows();
-if (Object.keys(csvFileMap).length) { renderChips(); refreshCSV(); }
+renderChips();
+if (Object.keys(csvFileMap).length) { refreshCSV(); }
 if (assetHistory.length) renderAssetHistSummary();
 renderDashboard();
 document.addEventListener('DOMContentLoaded', () => {
