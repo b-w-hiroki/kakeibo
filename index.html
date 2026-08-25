@@ -1008,7 +1008,7 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
   <!-- 控除 -->
   <div class="card tax-section">
     <div class="card-title">所得控除</div>
-    <div style="font-size:11px;color:var(--text3);margin-bottom:1rem;">該当するものにチェックを入れ、金額を入力してください。</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:1rem;">該当するものにチェックを入れると入力欄が開きます。 <span id="dc-count-badge" class="tax-badge">選択中 0件</span></div>
     <div class="deduction-grid">
       <!-- 基礎控除 -->
       <div>
@@ -1021,7 +1021,7 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
       <!-- 配偶者控除 / 配偶者特別控除 -->
       <div>
         <div class="deduction-item">
-          <input type="checkbox" id="dc-spouse" onchange="onSpouseChange()">
+          <input type="checkbox" id="dc-spouse" onchange="onDeductionToggle(this)">
           <label for="dc-spouse">配偶者控除 / 配偶者特別控除</label>
         </div>
         <div id="dc-spouse-detail" style="display:none;margin-left:22px;margin-top:6px;">
@@ -1037,10 +1037,10 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
       <!-- 扶養控除 -->
       <div>
         <div class="deduction-item">
-          <input type="checkbox" id="dc-dep" onchange="renderTaxResult()">
+          <input type="checkbox" id="dc-dep" onchange="onDeductionToggle(this)">
           <label for="dc-dep">扶養控除</label>
         </div>
-        <div class="tax-row" style="margin-top:4px;margin-left:22px;" id="dc-dep-detail" style="display:none">
+        <div class="tax-row" style="margin-top:4px;margin-left:22px;display:none;" id="dc-dep-detail">
           <span style="font-size:12px;color:var(--text3);">一般扶養</span>
           <input type="number" id="dc-dep-n" class="tax-input" style="width:60px;" value="0" min="0" max="10" oninput="renderTaxResult()">
           <span class="tax-unit">人 × 38万</span>
@@ -1049,16 +1049,22 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
       <!-- 社会保険料控除 -->
       <div>
         <div class="deduction-item">
-          <input type="checkbox" id="dc-social" onchange="renderTaxResult()">
+          <input type="checkbox" id="dc-social" onchange="onDeductionToggle(this)">
           <label for="dc-social">社会保険料控除</label>
-          <input type="number" id="dc-social-amt" class="tax-input" placeholder="年間合計" min="0" oninput="renderTaxResult()">
         </div>
-        <div style="font-size:12px;color:var(--text2);margin-left:22px;margin-top:2px;">健康保険・厚生年金・雇用保険など</div>
+        <div style="display:none;margin-left:22px;margin-top:6px;" id="dc-social-detail">
+          <div class="tax-row">
+            <span style="font-size:12px;color:var(--text3);min-width:80px;">年間合計</span>
+            <input type="number" id="dc-social-amt" class="tax-input" style="width:120px;" placeholder="0" min="0" oninput="renderTaxResult()">
+            <span class="tax-unit">円</span>
+          </div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px;">健康保険・厚生年金・雇用保険など</div>
+        </div>
       </div>
       <!-- 生命保険料控除 -->
       <div>
         <div class="deduction-item">
-          <input type="checkbox" id="dc-life" onchange="onLifeChange()">
+          <input type="checkbox" id="dc-life" onchange="onDeductionToggle(this)">
           <label for="dc-life">生命保険料控除</label>
         </div>
         <div id="dc-life-detail" style="display:none;margin-left:22px;margin-top:6px;">
@@ -1083,19 +1089,25 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
       <!-- 地震保険料控除 -->
       <div>
         <div class="deduction-item">
-          <input type="checkbox" id="dc-earthquake" onchange="renderTaxResult()">
+          <input type="checkbox" id="dc-earthquake" onchange="onDeductionToggle(this)">
           <label for="dc-earthquake">地震保険料控除</label>
-          <input type="number" id="dc-earthquake-amt" class="tax-input" placeholder="支払額" min="0" oninput="renderTaxResult()">
         </div>
-        <div style="font-size:12px;color:var(--text2);margin-left:22px;margin-top:2px;">最大5万円</div>
+        <div style="display:none;margin-left:22px;margin-top:6px;" id="dc-earthquake-detail">
+          <div class="tax-row">
+            <span style="font-size:12px;color:var(--text3);min-width:80px;">支払額</span>
+            <input type="number" id="dc-earthquake-amt" class="tax-input" style="width:120px;" placeholder="0" min="0" oninput="renderTaxResult()">
+            <span class="tax-unit">円</span>
+          </div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px;">最大5万円</div>
+        </div>
       </div>
       <!-- 医療費控除 -->
       <div>
         <div class="deduction-item">
-          <input type="checkbox" id="dc-medical" onchange="renderTaxResult()">
+          <input type="checkbox" id="dc-medical" onchange="onDeductionToggle(this)">
           <label for="dc-medical">医療費控除</label>
         </div>
-        <div style="margin-left:22px;margin-top:4px;" id="dc-medical-detail">
+        <div style="display:none;margin-left:22px;margin-top:4px;" id="dc-medical-detail">
           <div class="tax-row">
             <span style="font-size:12px;color:var(--text3);min-width:80px;">医療費合計</span>
             <input type="number" id="dc-medical-total" class="tax-input" style="width:120px;" placeholder="年間合計" min="0" oninput="renderTaxResult()">
@@ -1107,28 +1119,46 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
       <!-- iDeCo -->
       <div>
         <div class="deduction-item">
-          <input type="checkbox" id="dc-ideco" onchange="renderTaxResult()">
+          <input type="checkbox" id="dc-ideco" onchange="onDeductionToggle(this)">
           <label for="dc-ideco">小規模企業共済等控除（iDeCoなど）</label>
-          <input type="number" id="dc-ideco-amt" class="tax-input" placeholder="掛金年額" min="0" oninput="renderTaxResult()">
+        </div>
+        <div style="display:none;margin-left:22px;margin-top:6px;" id="dc-ideco-detail">
+          <div class="tax-row">
+            <span style="font-size:12px;color:var(--text3);min-width:80px;">掛金年額</span>
+            <input type="number" id="dc-ideco-amt" class="tax-input" style="width:120px;" placeholder="0" min="0" oninput="renderTaxResult()">
+            <span class="tax-unit">円</span>
+          </div>
         </div>
       </div>
       <!-- ふるさと納税 -->
       <div>
         <div class="deduction-item">
-          <input type="checkbox" id="dc-furusato" onchange="renderTaxResult()">
+          <input type="checkbox" id="dc-furusato" onchange="onDeductionToggle(this)">
           <label for="dc-furusato">寄附金控除（ふるさと納税など）</label>
-          <input type="number" id="dc-furusato-amt" class="tax-input" placeholder="寄附金合計" min="0" oninput="renderTaxResult()">
         </div>
-        <div style="font-size:12px;color:var(--text2);margin-left:22px;margin-top:2px;">控除額 = 寄附金 − 2,000円</div>
+        <div style="display:none;margin-left:22px;margin-top:6px;" id="dc-furusato-detail">
+          <div class="tax-row">
+            <span style="font-size:12px;color:var(--text3);min-width:80px;">寄附金合計</span>
+            <input type="number" id="dc-furusato-amt" class="tax-input" style="width:120px;" placeholder="0" min="0" oninput="renderTaxResult()">
+            <span class="tax-unit">円</span>
+          </div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px;">控除額 = 寄附金 − 2,000円</div>
+        </div>
       </div>
       <!-- 住宅ローン控除 -->
       <div>
         <div class="deduction-item">
-          <input type="checkbox" id="dc-housing" onchange="renderTaxResult()">
+          <input type="checkbox" id="dc-housing" onchange="onDeductionToggle(this)">
           <label for="dc-housing">住宅借入金等特別控除（住宅ローン）</label>
-          <input type="number" id="dc-housing-amt" class="tax-input" placeholder="控除額" min="0" oninput="renderTaxResult()">
         </div>
-        <div style="font-size:12px;color:var(--text2);margin-left:22px;margin-top:2px;">税額控除（源泉徴収票または住宅ローン控除証明書に記載）</div>
+        <div style="display:none;margin-left:22px;margin-top:6px;" id="dc-housing-detail">
+          <div class="tax-row">
+            <span style="font-size:12px;color:var(--text3);min-width:80px;">控除額</span>
+            <input type="number" id="dc-housing-amt" class="tax-input" style="width:120px;" placeholder="0" min="0" oninput="renderTaxResult()">
+            <span class="tax-unit">円</span>
+          </div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px;">税額控除（源泉徴収票または住宅ローン控除証明書に記載）</div>
+        </div>
       </div>
     </div>
   </div>
@@ -4368,18 +4398,24 @@ function calcBasicDeduction(totalIncome, year) {
   return 580000;
 }
 
-/* 生命保険料控除トグル */
-function onLifeChange() {
-  document.getElementById('dc-life-detail').style.display =
-    document.getElementById('dc-life').checked ? '' : 'none';
+/* 所得控除の開閉トグル（チェックで詳細入力を開く）*/
+const DEDUCTION_TOGGLE_IDS = ['dc-spouse','dc-dep','dc-social','dc-life','dc-earthquake','dc-medical','dc-ideco','dc-furusato','dc-housing'];
+function onDeductionToggle(cb) {
+  const detail = document.getElementById(cb.id + '-detail');
+  if (detail) detail.style.display = cb.checked ? '' : 'none';
   renderTaxResult();
 }
-
-/* 配偶者控除トグル */
-function onSpouseChange() {
-  document.getElementById('dc-spouse-detail').style.display =
-    document.getElementById('dc-spouse').checked ? '' : 'none';
-  renderTaxResult();
+function syncDeductionDetails() {
+  let count = 0;
+  DEDUCTION_TOGGLE_IDS.forEach(id => {
+    const cb = document.getElementById(id);
+    if (!cb) return;
+    const detail = document.getElementById(id + '-detail');
+    if (detail) detail.style.display = cb.checked ? '' : 'none';
+    if (cb.checked) count++;
+  });
+  const badge = document.getElementById('dc-count-badge');
+  if (badge) badge.textContent = '選択中 ' + count + '件';
 }
 
 /* 所得税の計算（課税所得 → 税額） */
@@ -4422,6 +4458,7 @@ function getNum(id) { return parseFloat(document.getElementById(id)?.value)||0; 
 function getChk(id) { return document.getElementById(id)?.checked||false; }
 
 function renderTaxResult() {
+  syncDeductionDetails();
   const type = document.getElementById('tx-type').value;
   const txYear = parseInt(document.getElementById('tx-year').value, 10) || (new Date().getFullYear() - 1);
 
@@ -4798,10 +4835,6 @@ document.getElementById('tx-year').addEventListener('change', () => {
 });
 
 /* 扶養控除の表示切り替え */
-document.getElementById('dc-dep').addEventListener('change', () => {
-  document.getElementById('dc-dep-detail').style.display = document.getElementById('dc-dep').checked ? '' : 'none';
-  renderTaxResult();
-});
 
 /* ===== テーマ切替 ===== */
 function applyThemeButton() {
