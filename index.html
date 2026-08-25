@@ -76,15 +76,15 @@ header{border-bottom:.5px solid var(--border);padding:1rem 1.5rem;display:flex;a
 .panel{display:none;padding:1.5rem;}.panel.active{display:block;animation:panel-in .28s ease;}
 @keyframes panel-in{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
 /* ダッシュボード内サブタブ（縦スクロールを分割し、目的別に見やすくする） */
-.dash-subtab-bar{display:flex;gap:6px;margin-bottom:1.5rem;border-bottom:.5px solid var(--border);padding-bottom:0;overflow-x:auto;scrollbar-width:none;}
-.dash-subtab-bar::-webkit-scrollbar{display:none;}
-.dash-subtab{display:flex;align-items:center;gap:6px;padding:.55rem 1rem;font-size:13px;font-weight:500;color:var(--text2);background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-.5px;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;transition:color .15s,border-color .15s;}
-.dash-subtab:hover:not(.active){color:var(--text);}
-.dash-subtab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
-.dash-subtab .dst-icon{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
-.dash-subpanel{display:none;}
-.dash-subpanel.active{display:block;animation:panel-in .2s ease;}
-@media print{.dash-subpanel{display:block!important;}}
+.dash-subtab-bar,.tax-subtab-bar{display:flex;gap:6px;margin-bottom:1.5rem;border-bottom:.5px solid var(--border);padding-bottom:0;overflow-x:auto;scrollbar-width:none;}
+.dash-subtab-bar::-webkit-scrollbar,.tax-subtab-bar::-webkit-scrollbar{display:none;}
+.dash-subtab,.tax-subtab{display:flex;align-items:center;gap:6px;padding:.55rem 1rem;font-size:13px;font-weight:500;color:var(--text2);background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-.5px;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;transition:color .15s,border-color .15s;}
+.dash-subtab:hover:not(.active),.tax-subtab:hover:not(.active){color:var(--text);}
+.dash-subtab.active,.tax-subtab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
+.dash-subtab .dst-icon,.tax-subtab .dst-icon{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
+.dash-subpanel,.tax-subpanel{display:none;}
+.dash-subpanel.active,.tax-subpanel.active{display:block;animation:panel-in .2s ease;}
+@media print{.dash-subpanel,.tax-subpanel{display:block!important;}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 :is(button,select,input,a):focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--rs);}
 
@@ -189,6 +189,9 @@ tr:hover td{background:var(--surface2);}
 .add-btn{background:none;border:.5px solid var(--border2);border-radius:var(--rs);color:var(--text);cursor:pointer;padding:7px 14px;font-size:14px;font-family:inherit;font-weight:500;transition:background .15s,color .15s,border-color .15s,transform .1s;margin-top:4px;}
 .add-btn:hover{background:var(--accent-dim);color:var(--accent);border-color:var(--accent-glow);}
 .add-btn:active{transform:translateY(1px);}
+.manual-group-head{margin:12px 0 6px;}
+.manual-group-toggle{display:flex;align-items:center;gap:4px;background:none;border:none;color:var(--text2);font-size:12px;font-weight:600;letter-spacing:.03em;cursor:pointer;font-family:inherit;padding:4px 0;}
+.manual-group-toggle:hover{color:var(--text);}
 
 /* MISC */
 .section-label{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);margin-bottom:10px;font-weight:600;}
@@ -907,6 +910,14 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
 <div class="panel" id="tab-tax">
   <div class="note no-print" style="margin-bottom:1.5rem;">この試算は参考値です。実際の申告は e-Tax または税務署窓口でご確認ください。</div>
 
+  <div class="tax-subtab-bar no-print">
+    <button class="tax-subtab" data-sub="basic" onclick="switchTaxSubtab('basic')"><svg class="dst-icon"><use href="#hi-filetext"></use></svg>基本情報</button>
+    <button class="tax-subtab" data-sub="deduction" onclick="switchTaxSubtab('deduction')"><svg class="dst-icon"><use href="#hi-check"></use></svg>控除</button>
+    <button class="tax-subtab" data-sub="result" onclick="switchTaxSubtab('result')"><svg class="dst-icon"><use href="#hi-table"></use></svg>結果</button>
+  </div>
+
+  <div class="tax-subpanel" id="taxsub-basic">
+
   <!-- 一括連携 -->
   <div class="card tax-section no-print" id="tax-link-card">
     <div class="card-title">ダッシュボードから自動取得</div>
@@ -1005,10 +1016,14 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
     </div>
   </div>
 
+  </div>
+
+  <div class="tax-subpanel" id="taxsub-deduction">
+
   <!-- 控除 -->
   <div class="card tax-section">
     <div class="card-title">所得控除</div>
-    <div style="font-size:11px;color:var(--text3);margin-bottom:1rem;">該当するものにチェックを入れ、金額を入力してください。</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:1rem;">該当するものにチェックを入れると入力欄が開きます。 <span id="dc-count-badge" class="tax-badge">選択中 0件</span></div>
     <div class="deduction-grid">
       <!-- 基礎控除 -->
       <div>
@@ -1021,7 +1036,7 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
       <!-- 配偶者控除 / 配偶者特別控除 -->
       <div>
         <div class="deduction-item">
-          <input type="checkbox" id="dc-spouse" onchange="onSpouseChange()">
+          <input type="checkbox" id="dc-spouse" onchange="onDeductionToggle(this)">
           <label for="dc-spouse">配偶者控除 / 配偶者特別控除</label>
         </div>
         <div id="dc-spouse-detail" style="display:none;margin-left:22px;margin-top:6px;">
@@ -1037,10 +1052,10 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
       <!-- 扶養控除 -->
       <div>
         <div class="deduction-item">
-          <input type="checkbox" id="dc-dep" onchange="renderTaxResult()">
+          <input type="checkbox" id="dc-dep" onchange="onDeductionToggle(this)">
           <label for="dc-dep">扶養控除</label>
         </div>
-        <div class="tax-row" style="margin-top:4px;margin-left:22px;" id="dc-dep-detail" style="display:none">
+        <div class="tax-row" style="margin-top:4px;margin-left:22px;display:none;" id="dc-dep-detail">
           <span style="font-size:12px;color:var(--text3);">一般扶養</span>
           <input type="number" id="dc-dep-n" class="tax-input" style="width:60px;" value="0" min="0" max="10" oninput="renderTaxResult()">
           <span class="tax-unit">人 × 38万</span>
@@ -1049,16 +1064,22 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
       <!-- 社会保険料控除 -->
       <div>
         <div class="deduction-item">
-          <input type="checkbox" id="dc-social" onchange="renderTaxResult()">
+          <input type="checkbox" id="dc-social" onchange="onDeductionToggle(this)">
           <label for="dc-social">社会保険料控除</label>
-          <input type="number" id="dc-social-amt" class="tax-input" placeholder="年間合計" min="0" oninput="renderTaxResult()">
         </div>
-        <div style="font-size:12px;color:var(--text2);margin-left:22px;margin-top:2px;">健康保険・厚生年金・雇用保険など</div>
+        <div style="display:none;margin-left:22px;margin-top:6px;" id="dc-social-detail">
+          <div class="tax-row">
+            <span style="font-size:12px;color:var(--text3);min-width:80px;">年間合計</span>
+            <input type="number" id="dc-social-amt" class="tax-input" style="width:120px;" placeholder="0" min="0" oninput="renderTaxResult()">
+            <span class="tax-unit">円</span>
+          </div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px;">健康保険・厚生年金・雇用保険など</div>
+        </div>
       </div>
       <!-- 生命保険料控除 -->
       <div>
         <div class="deduction-item">
-          <input type="checkbox" id="dc-life" onchange="onLifeChange()">
+          <input type="checkbox" id="dc-life" onchange="onDeductionToggle(this)">
           <label for="dc-life">生命保険料控除</label>
         </div>
         <div id="dc-life-detail" style="display:none;margin-left:22px;margin-top:6px;">
@@ -1083,19 +1104,25 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
       <!-- 地震保険料控除 -->
       <div>
         <div class="deduction-item">
-          <input type="checkbox" id="dc-earthquake" onchange="renderTaxResult()">
+          <input type="checkbox" id="dc-earthquake" onchange="onDeductionToggle(this)">
           <label for="dc-earthquake">地震保険料控除</label>
-          <input type="number" id="dc-earthquake-amt" class="tax-input" placeholder="支払額" min="0" oninput="renderTaxResult()">
         </div>
-        <div style="font-size:12px;color:var(--text2);margin-left:22px;margin-top:2px;">最大5万円</div>
+        <div style="display:none;margin-left:22px;margin-top:6px;" id="dc-earthquake-detail">
+          <div class="tax-row">
+            <span style="font-size:12px;color:var(--text3);min-width:80px;">支払額</span>
+            <input type="number" id="dc-earthquake-amt" class="tax-input" style="width:120px;" placeholder="0" min="0" oninput="renderTaxResult()">
+            <span class="tax-unit">円</span>
+          </div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px;">最大5万円</div>
+        </div>
       </div>
       <!-- 医療費控除 -->
       <div>
         <div class="deduction-item">
-          <input type="checkbox" id="dc-medical" onchange="renderTaxResult()">
+          <input type="checkbox" id="dc-medical" onchange="onDeductionToggle(this)">
           <label for="dc-medical">医療費控除</label>
         </div>
-        <div style="margin-left:22px;margin-top:4px;" id="dc-medical-detail">
+        <div style="display:none;margin-left:22px;margin-top:4px;" id="dc-medical-detail">
           <div class="tax-row">
             <span style="font-size:12px;color:var(--text3);min-width:80px;">医療費合計</span>
             <input type="number" id="dc-medical-total" class="tax-input" style="width:120px;" placeholder="年間合計" min="0" oninput="renderTaxResult()">
@@ -1107,31 +1134,53 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
       <!-- iDeCo -->
       <div>
         <div class="deduction-item">
-          <input type="checkbox" id="dc-ideco" onchange="renderTaxResult()">
+          <input type="checkbox" id="dc-ideco" onchange="onDeductionToggle(this)">
           <label for="dc-ideco">小規模企業共済等控除（iDeCoなど）</label>
-          <input type="number" id="dc-ideco-amt" class="tax-input" placeholder="掛金年額" min="0" oninput="renderTaxResult()">
+        </div>
+        <div style="display:none;margin-left:22px;margin-top:6px;" id="dc-ideco-detail">
+          <div class="tax-row">
+            <span style="font-size:12px;color:var(--text3);min-width:80px;">掛金年額</span>
+            <input type="number" id="dc-ideco-amt" class="tax-input" style="width:120px;" placeholder="0" min="0" oninput="renderTaxResult()">
+            <span class="tax-unit">円</span>
+          </div>
         </div>
       </div>
       <!-- ふるさと納税 -->
       <div>
         <div class="deduction-item">
-          <input type="checkbox" id="dc-furusato" onchange="renderTaxResult()">
+          <input type="checkbox" id="dc-furusato" onchange="onDeductionToggle(this)">
           <label for="dc-furusato">寄附金控除（ふるさと納税など）</label>
-          <input type="number" id="dc-furusato-amt" class="tax-input" placeholder="寄附金合計" min="0" oninput="renderTaxResult()">
         </div>
-        <div style="font-size:12px;color:var(--text2);margin-left:22px;margin-top:2px;">控除額 = 寄附金 − 2,000円</div>
+        <div style="display:none;margin-left:22px;margin-top:6px;" id="dc-furusato-detail">
+          <div class="tax-row">
+            <span style="font-size:12px;color:var(--text3);min-width:80px;">寄附金合計</span>
+            <input type="number" id="dc-furusato-amt" class="tax-input" style="width:120px;" placeholder="0" min="0" oninput="renderTaxResult()">
+            <span class="tax-unit">円</span>
+          </div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px;">控除額 = 寄附金 − 2,000円</div>
+        </div>
       </div>
       <!-- 住宅ローン控除 -->
       <div>
         <div class="deduction-item">
-          <input type="checkbox" id="dc-housing" onchange="renderTaxResult()">
+          <input type="checkbox" id="dc-housing" onchange="onDeductionToggle(this)">
           <label for="dc-housing">住宅借入金等特別控除（住宅ローン）</label>
-          <input type="number" id="dc-housing-amt" class="tax-input" placeholder="控除額" min="0" oninput="renderTaxResult()">
         </div>
-        <div style="font-size:12px;color:var(--text2);margin-left:22px;margin-top:2px;">税額控除（源泉徴収票または住宅ローン控除証明書に記載）</div>
+        <div style="display:none;margin-left:22px;margin-top:6px;" id="dc-housing-detail">
+          <div class="tax-row">
+            <span style="font-size:12px;color:var(--text3);min-width:80px;">控除額</span>
+            <input type="number" id="dc-housing-amt" class="tax-input" style="width:120px;" placeholder="0" min="0" oninput="renderTaxResult()">
+            <span class="tax-unit">円</span>
+          </div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px;">税額控除（源泉徴収票または住宅ローン控除証明書に記載）</div>
+        </div>
       </div>
     </div>
   </div>
+
+  </div>
+
+  <div class="tax-subpanel" id="taxsub-result">
 
   <!-- 試算結果 -->
   <div class="card tax-section" id="tax-result-card">
@@ -1145,6 +1194,8 @@ tr.row-excluded td:not(:last-child){opacity:.4;text-decoration:line-through;}
         <tr><td colspan="2" style="color:var(--text3);font-size:12px;text-align:center;padding:2rem 0;">上の項目を入力すると試算結果が表示されます</td></tr>
       </tbody>
     </table>
+  </div>
+
   </div>
 </div>
 
@@ -1593,6 +1644,7 @@ let categoryAliases = {};
 let fixedCats = new Set();
 let investCats = new Set(); // 投資（NISA・暗号資産・ロボアド等）として支出集計から分離するカテゴリ
 let dashSubtab = 'overview'; // ダッシュボード内サブタブ（overview/assets/analysis）の選択状態
+let taxSubtab = 'basic'; // 確定申告タブ内サブタブ（basic/deduction/result）の選択状態
 let excludedKeys = new Set(); // 集計から除外する取引（特別支出など）
 let assetGoal = { amt: 0, year: 0 }; // 資産目標（金額・達成年）
 let catColors = {}; // カテゴリ別のグラフ色 {cat: '#rrggbb'}
@@ -2676,30 +2728,54 @@ document.addEventListener('keydown', e => { if(e.key==='Escape'){ closeAllModal(
 ['mf-month','mf-type','mf-cat'].forEach(id=>document.getElementById(id).onchange=applyModalFilter);
 
 /* MANUAL */
+let manualGroupCollapsed = { inc:false, exp:false }; // 「特定月の項目」グループの開閉（ページ内のみ・非永続）
 function renderManual() {
+  const makeRow = (type, row) => {
+    const div=document.createElement('div');
+    div.className='entry-row';
+    div.innerHTML=`
+      <input type="text" placeholder="項目名" value="${esc(row.name)}" oninput="updManual('${type}',${row.id},'name',this.value)">
+      <input type="month" class="month-in" value="${esc(row.month||'')}" title="対象月（未指定なら毎月扱い）" oninput="updManual('${type}',${row.id},'month',this.value)">
+      <input type="number" class="amt-in" placeholder="金額" value="${row.amt||''}" min="0" oninput="updManual('${type}',${row.id},'amt',this.value)">
+      <button class="del-btn" onclick="delRow('${type}',${row.id})">×</button>`;
+    return div;
+  };
   ['inc','exp'].forEach(type=>{
     const arr = type==='inc'?manualInc:manualExp;
     const container = document.getElementById(type+'-rows');
     container.innerHTML='';
-    arr.forEach(row=>{
-      const div=document.createElement('div');
-      div.className='entry-row';
-      div.innerHTML=`
-        <input type="text" placeholder="項目名" value="${esc(row.name)}" oninput="updManual('${type}',${row.id},'name',this.value)">
-        <input type="month" class="month-in" value="${esc(row.month||'')}" title="対象月（未指定なら毎月扱い）" oninput="updManual('${type}',${row.id},'month',this.value)">
-        <input type="number" class="amt-in" placeholder="金額" value="${row.amt||''}" min="0" oninput="updManual('${type}',${row.id},'amt',this.value)">
-        <button class="del-btn" onclick="delRow('${type}',${row.id})">×</button>`;
-      container.appendChild(div);
-    });
+
+    const recurring = arr.filter(r => !r.month);
+    const dated = arr.filter(r => r.month).sort((a,b) => b.month.localeCompare(a.month));
+
+    recurring.forEach(row => container.appendChild(makeRow(type, row)));
+
+    if (dated.length) {
+      const collapsed = manualGroupCollapsed[type];
+      const head = document.createElement('div');
+      head.className = 'manual-group-head';
+      head.innerHTML = `<button class="manual-group-toggle" onclick="toggleManualGroup('${type}')">${collapsed?'▸':'▾'} 特定月の項目（${dated.length}件）</button>`;
+      container.appendChild(head);
+      if (!collapsed) dated.forEach(row => container.appendChild(makeRow(type, row)));
+    }
   });
   calcManual();
+}
+function toggleManualGroup(type) {
+  manualGroupCollapsed[type] = !manualGroupCollapsed[type];
+  renderManual();
 }
 function updManual(type,id,field,val){
   const arr=type==='inc'?manualInc:manualExp;
   const row=arr.find(r=>r.id===id);
   if(!row)return;
   row[field]=field==='amt'?clampAmt(val):val;
-  calcManual();
+  if (field==='month') {
+    if (val) manualGroupCollapsed[type] = false;
+    renderManual();
+  } else {
+    calcManual();
+  }
 }
 function addRow(type){ (type==='inc'?manualInc:manualExp).push({id:nextId++,name:'',amt:0}); renderManual(); saveStorage(); }
 function delRow(type,id){
@@ -3487,6 +3563,17 @@ function switchDashSubtab(id) {
   applyDashSubtab();
   // 非表示中に作られたcanvasは幅0で描画されてしまうため、表示後に再描画して整合させる
   renderDashboard();
+}
+
+/* 確定申告タブ内サブタブ（基本情報／控除／結果） */
+function applyTaxSubtab() {
+  document.querySelectorAll('.tax-subtab').forEach(b => b.classList.toggle('active', b.dataset.sub === taxSubtab));
+  document.querySelectorAll('.tax-subpanel').forEach(p => p.classList.toggle('active', p.id === 'taxsub-' + taxSubtab));
+}
+function switchTaxSubtab(id) {
+  if (taxSubtab === id) return;
+  taxSubtab = id;
+  applyTaxSubtab();
 }
 
 function initCollapsibles() {
@@ -4368,18 +4455,24 @@ function calcBasicDeduction(totalIncome, year) {
   return 580000;
 }
 
-/* 生命保険料控除トグル */
-function onLifeChange() {
-  document.getElementById('dc-life-detail').style.display =
-    document.getElementById('dc-life').checked ? '' : 'none';
+/* 所得控除の開閉トグル（チェックで詳細入力を開く）*/
+const DEDUCTION_TOGGLE_IDS = ['dc-spouse','dc-dep','dc-social','dc-life','dc-earthquake','dc-medical','dc-ideco','dc-furusato','dc-housing'];
+function onDeductionToggle(cb) {
+  const detail = document.getElementById(cb.id + '-detail');
+  if (detail) detail.style.display = cb.checked ? '' : 'none';
   renderTaxResult();
 }
-
-/* 配偶者控除トグル */
-function onSpouseChange() {
-  document.getElementById('dc-spouse-detail').style.display =
-    document.getElementById('dc-spouse').checked ? '' : 'none';
-  renderTaxResult();
+function syncDeductionDetails() {
+  let count = 0;
+  DEDUCTION_TOGGLE_IDS.forEach(id => {
+    const cb = document.getElementById(id);
+    if (!cb) return;
+    const detail = document.getElementById(id + '-detail');
+    if (detail) detail.style.display = cb.checked ? '' : 'none';
+    if (cb.checked) count++;
+  });
+  const badge = document.getElementById('dc-count-badge');
+  if (badge) badge.textContent = '選択中 ' + count + '件';
 }
 
 /* 所得税の計算（課税所得 → 税額） */
@@ -4422,6 +4515,8 @@ function getNum(id) { return parseFloat(document.getElementById(id)?.value)||0; 
 function getChk(id) { return document.getElementById(id)?.checked||false; }
 
 function renderTaxResult() {
+  applyTaxSubtab();
+  syncDeductionDetails();
   const type = document.getElementById('tx-type').value;
   const txYear = parseInt(document.getElementById('tx-year').value, 10) || (new Date().getFullYear() - 1);
 
@@ -4798,10 +4893,6 @@ document.getElementById('tx-year').addEventListener('change', () => {
 });
 
 /* 扶養控除の表示切り替え */
-document.getElementById('dc-dep').addEventListener('change', () => {
-  document.getElementById('dc-dep-detail').style.display = document.getElementById('dc-dep').checked ? '' : 'none';
-  renderTaxResult();
-});
 
 /* ===== テーマ切替 ===== */
 function applyThemeButton() {
@@ -4939,6 +5030,7 @@ renderChips();
 if (Object.keys(csvFileMap).length) { refreshCSV(); }
 if (assetHistory.length) renderAssetHistSummary();
 renderDashboard();
+applyTaxSubtab();
 document.addEventListener('DOMContentLoaded', () => {
   const bm = document.getElementById('budget-modal');
   if (bm) bm.onclick = e => { if (e.target === bm) closeBudgetModal(); };
