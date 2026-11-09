@@ -15,4 +15,4 @@ jobs:
         with:
           node-version: '20'
       - run: node .github/scripts/check.mjs
-      - run: node --test tests/import-render-safety.test.mjs
+      - run: node --test tests/*.test.mjs
