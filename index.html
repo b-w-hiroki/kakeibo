@@ -1663,6 +1663,7 @@ function debounce(fn, ms) {
 /* STORAGE */
 let saveFailWarned = false;
 function saveStorage() {
+  if (pendingBackupRecovery) { showToast('復旧用の元データをバックアップに書き出してから再読み込みしてください。', 'error'); return false; }
   // データを書き換えた直後なので、集計キャッシュを必ず捨てる
   invalidateCSVCache();
   try {
@@ -1947,9 +1948,9 @@ function renderAssetRows() {
     const div = document.createElement('div');
     div.className = 'entry-row';
     div.innerHTML = `
-      <input type="text" placeholder="口座名・金融機関名" value="${esc(row.name)}" oninput="updAssetRow(${row.id},'name',this.value)">
-      <input type="number" class="amt-in" placeholder="残高（円）" value="${row.amt||''}" min="0" oninput="updAssetRow(${row.id},'amt',this.value)">
-      <button class="del-btn" onclick="delAssetRow(${row.id})">×</button>`;
+      <input type="text" placeholder="口座名・金融機関名" value="${esc(row.name)}" oninput="updAssetRow(${Number.isSafeInteger(row.id) ? row.id : -1},'name',this.value)">
+      <input type="number" class="amt-in" placeholder="残高（円）" value="${esc(row.amt||'')}" min="0" oninput="updAssetRow(${Number.isSafeInteger(row.id) ? row.id : -1},'amt',this.value)">
+      <button class="del-btn" onclick="delAssetRow(${Number.isSafeInteger(row.id) ? row.id : -1})">×</button>`;
     container.appendChild(div);
   });
 }
@@ -2458,7 +2459,7 @@ function renderLineChart(canvasId, labels, balances, ref) {
 /* CAT BARS */
 const palette = ['#f87171','#fb923c','#fbbf24','#a3e635','#34d399','#38bdf8','#818cf8','#e879f9','#f472b6','#94a3b8'];
 /* カテゴリごとの色。未設定なら並び順のパレット色を使う */
-function catColor(cat, i) { return catColors[cat] || palette[i % palette.length]; }
+function catColor(cat, i) { return /^#[0-9a-f]{6}$/i.test(catColors[cat] || '') ? catColors[cat] : palette[i % palette.length]; }
 function renderCatBars(id, rows) {
   const catMap = {};
   rows.filter(r=>r.type==='exp').forEach(r=>{
@@ -2502,7 +2503,7 @@ function openBudgetModal() {
         id="clr-${encodeURIComponent(cat)}" title="グラフの色を変更">
       <span style="font-size:13px;color:var(--text2);flex:1;">${esc(cat)}</span>
       <input type="number" class="amt-in" placeholder="予算（円）"
-        value="${budgetMap[cat]||''}" min="0"
+        value="${esc(budgetMap[cat]||'')}" min="0"
         id="bgt-${encodeURIComponent(cat)}" style="width:140px;">
       <span style="font-size:12px;color:var(--text3);">円/月</span>
     </div>`).join('') || '<div style="font-size:12px;color:var(--text3);">CSVを取り込むとカテゴリが表示されます</div>';
@@ -2734,10 +2735,10 @@ function renderManual() {
     const div=document.createElement('div');
     div.className='entry-row';
     div.innerHTML=`
-      <input type="text" placeholder="項目名" value="${esc(row.name)}" oninput="updManual('${type}',${row.id},'name',this.value)">
-      <input type="month" class="month-in" value="${esc(row.month||'')}" title="対象月（未指定なら毎月扱い）" oninput="updManual('${type}',${row.id},'month',this.value)">
-      <input type="number" class="amt-in" placeholder="金額" value="${row.amt||''}" min="0" oninput="updManual('${type}',${row.id},'amt',this.value)">
-      <button class="del-btn" onclick="delRow('${type}',${row.id})">×</button>`;
+      <input type="text" placeholder="項目名" value="${esc(row.name)}" oninput="updManual('${type}',${Number.isSafeInteger(row.id) ? row.id : -1},'name',this.value)">
+      <input type="month" class="month-in" value="${esc(row.month||'')}" title="対象月（未指定なら毎月扱い）" oninput="updManual('${type}',${Number.isSafeInteger(row.id) ? row.id : -1},'month',this.value)">
+      <input type="number" class="amt-in" placeholder="金額" value="${esc(row.amt||'')}" min="0" oninput="updManual('${type}',${Number.isSafeInteger(row.id) ? row.id : -1},'amt',this.value)">
+      <button class="del-btn" onclick="delRow('${type}',${Number.isSafeInteger(row.id) ? row.id : -1})">×</button>`;
     return div;
   };
   ['inc','exp'].forEach(type=>{
@@ -4963,7 +4964,7 @@ function renderStorageUsage() {
 function closeDataModal() { document.getElementById('data-modal').classList.remove('open'); }
 function exportBackup() {
   const data = { _app:'kakeibo', _version:1, _exportedAt:new Date().toISOString(), store:{} };
-  BACKUP_KEYS.forEach(k => { const v = localStorage.getItem(k); if (v !== null) data.store[k] = v; });
+  BACKUP_KEYS.forEach(k => { const v = pendingBackupRecovery ? pendingBackupRecovery[k] : localStorage.getItem(k); if (v !== null) data.store[k] = v; });
   const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -4980,22 +4981,82 @@ function resetAllData() {
   location.reload();
 }
 
+// Validate all known fields before any storage change. Missing keys in older
+// backups are retained; unknown keys are ignored rather than written.
+function prepareBackupStore(data) {
+  const obj = v => v !== null && typeof v === 'object' && !Array.isArray(v);
+  const num = v => typeof v === 'number' && Number.isFinite(v);
+  const id = v => Number.isSafeInteger(v) && v >= 0;
+  const str = v => typeof v === 'string';
+  const map = (v, check) => obj(v) && Object.entries(v).every(([k,x]) => !['__proto__','constructor','prototype'].includes(k) && check(x));
+  const strings = v => Array.isArray(v) && v.every(str);
+  const fields = (v, names, check) => names.every(k => v[k] === undefined || check(v[k]));
+  const manual = v => Array.isArray(v) && v.every(r => obj(r) && id(r.id) && str(r.name) && num(r.amt) && fields(r,['month'],str)) && new Set(v.map(r=>r.id)).size === v.length;
+  const tx = r => obj(r) && num(r.amt) && ['inc','exp'].includes(r.type) && ['date','name','cat','bank','month'].every(k=>str(r[k])) && fields(r,['id','sub'],str) && fields(r,['tf','ppCard'],v=>typeof v==='boolean');
+  const trip = r => obj(r) && id(r.id) && ['name','start','end'].every(k=>str(r[k])) && num(r.budget);
+  if (!obj(data) || data._app !== 'kakeibo' || (data._version !== undefined && data._version !== 1) || !obj(data.store)) throw new Error('unsupported backup');
+  const checks = {
+    kakeibo_csv: v => map(v, rows => Array.isArray(rows) && rows.every(tx)),
+    kakeibo_assets: manual, kakeibo_inc: manual, kakeibo_exp: manual,
+    kakeibo_ah: v => Array.isArray(v) && v.every(r=>obj(r)&&str(r.month)&&num(r.total)&&fields(r,['cash','funds','stocks','stocksM','pension'],num)),
+    kakeibo_budget: v => map(v,num), kakeibo_cat_aliases: v => map(v,str),
+    kakeibo_fixed_cats: strings, kakeibo_invest_cats: strings,
+    kakeibo_excluded: strings, kakeibo_collapsed: strings,
+    kakeibo_goal: v => obj(v)&&num(v.amt)&&num(v.year),
+    kakeibo_cat_colors: v => map(v,x=>str(x)&&/^#[0-9a-f]{6}$/i.test(x)),
+    kakeibo_trips: v => (Array.isArray(v) ? v.every(trip) : obj(v)&&typeof v.excl==='boolean'&&Array.isArray(v.list)&&v.list.every(trip)),
+    kakeibo_trip_tags: v => map(v,id)
+  };
+  const store = Object.create(null);
+  for (const key of BACKUP_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(data.store,key)) continue;
+    const raw=data.store[key];
+    if (!str(raw)) throw new Error('invalid backup value');
+    if (key==='kakeibo_theme') { if(!['light','dark'].includes(raw))throw new Error('invalid theme'); }
+    else if (key==='kakeibo_csvdetail_seeded') { if(raw!=='1')throw new Error('invalid seed flag'); }
+    else if (key==='kakeibo_nextId') { if(!/^\d+$/.test(raw)||!id(Number(raw)))throw new Error('invalid next id'); }
+    else if (!checks[key] || !checks[key](JSON.parse(raw))) throw new Error('invalid '+key);
+    store[key]=raw;
+  }
+  if (!Object.keys(store).length) throw new Error('empty backup');
+  return store;
+}
+let pendingBackupRecovery = null;
+window.addEventListener('beforeunload', e => { if (pendingBackupRecovery) { e.preventDefault(); e.returnValue = ''; } });
+function applyBackupStore(store) {
+  if (pendingBackupRecovery) throw new Error('recovery pending');
+  const previous=Object.create(null);
+  BACKUP_KEYS.forEach(k=>{previous[k]=localStorage.getItem(k)});
+  const written=[];
+  try {
+    for (const [key,value] of Object.entries(store)) { localStorage.setItem(key,value); written.push(key); }
+  } catch(error) {
+    let restored=true;
+    for (const key of written.reverse()) {
+      try { if(previous[key]===null)localStorage.removeItem(key); else localStorage.setItem(key,previous[key]); }
+      catch { restored=false; }
+    }
+    if(!restored) {
+      pendingBackupRecovery=previous;
+      throw new Error('rollback failed; original backup available');
+    }
+    throw error;
+  }
+}
+
 function importBackup(files) {
   const file = files && files[0];
   if (!file) return;
+  if (file.size > 10 * 1024 * 1024) { showToast('バックアップは10MB以内のファイルを選んでください', 'error'); return; }
   const reader = new FileReader();
   reader.onload = ev => {
+    let committed = false;
     try {
       const data = JSON.parse(ev.target.result);
-      const store = (data && data.store) ? data.store : null;
-      if (!store || data._app !== 'kakeibo') {
-        showToast('このファイルは収支ダッシュボードのバックアップではありません', 'error');
-        return;
-      }
-      if (!confirm('現在のデータをバックアップの内容で上書きします。よろしいですか？')) return;
-      // 既存のアプリデータを消してから復元（部分的な不整合を防ぐ）
-      BACKUP_KEYS.forEach(k => localStorage.removeItem(k));
-      Object.entries(store).forEach(([k,v]) => { if (BACKUP_KEYS.includes(k) && typeof v === 'string') localStorage.setItem(k, v); });
+      const store = prepareBackupStore(data);
+      if (!confirm('バックアップに含まれる項目を上書きします。含まれない項目は現在のまま残します。よろしいですか？')) return;
+      applyBackupStore(store);
+      committed = true;
       // 状態を読み直して全再描画
       loadStorage();
       initTheme();
@@ -5008,9 +5069,10 @@ function importBackup(files) {
       closeDataModal();
       showToast('バックアップから復元しました', 'success');
     } catch(e) {
-      showToast('ファイルの読み込みに失敗しました（JSON形式を確認してください）', 'error');
+      showToast(pendingBackupRecovery ? '保存と復旧に失敗しました。再読み込みせず「バックアップを書き出す」で元データを保存してください。' : committed ? 'データは復元しましたが画面更新に失敗しました。再読み込みしてください。' : '復元できませんでした。形式・保存容量を確認してください。元データは変更していません。', 'error', 12000);
     }
   };
+  reader.onerror = () => showToast('ファイルを読み込めませんでした。元データは変更していません。', 'error');
   reader.readAsText(file);
 }
 
