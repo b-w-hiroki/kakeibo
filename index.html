@@ -1947,9 +1947,9 @@ function renderAssetRows() {
     const div = document.createElement('div');
     div.className = 'entry-row';
     div.innerHTML = `
-      <input type="text" placeholder="口座名・金融機関名" value="${esc(row.name)}" oninput="updAssetRow(${row.id},'name',this.value)">
-      <input type="number" class="amt-in" placeholder="残高（円）" value="${row.amt||''}" min="0" oninput="updAssetRow(${row.id},'amt',this.value)">
-      <button class="del-btn" onclick="delAssetRow(${row.id})">×</button>`;
+      <input type="text" placeholder="口座名・金融機関名" value="${esc(row.name)}" oninput="updAssetRow(${Number.isSafeInteger(row.id) ? row.id : -1},'name',this.value)">
+      <input type="number" class="amt-in" placeholder="残高（円）" value="${esc(row.amt||'')}" min="0" oninput="updAssetRow(${Number.isSafeInteger(row.id) ? row.id : -1},'amt',this.value)">
+      <button class="del-btn" onclick="delAssetRow(${Number.isSafeInteger(row.id) ? row.id : -1})">×</button>`;
     container.appendChild(div);
   });
 }
@@ -2458,7 +2458,7 @@ function renderLineChart(canvasId, labels, balances, ref) {
 /* CAT BARS */
 const palette = ['#f87171','#fb923c','#fbbf24','#a3e635','#34d399','#38bdf8','#818cf8','#e879f9','#f472b6','#94a3b8'];
 /* カテゴリごとの色。未設定なら並び順のパレット色を使う */
-function catColor(cat, i) { return catColors[cat] || palette[i % palette.length]; }
+function catColor(cat, i) { return /^#[0-9a-f]{6}$/i.test(catColors[cat] || '') ? catColors[cat] : palette[i % palette.length]; }
 function renderCatBars(id, rows) {
   const catMap = {};
   rows.filter(r=>r.type==='exp').forEach(r=>{
@@ -2502,7 +2502,7 @@ function openBudgetModal() {
         id="clr-${encodeURIComponent(cat)}" title="グラフの色を変更">
       <span style="font-size:13px;color:var(--text2);flex:1;">${esc(cat)}</span>
       <input type="number" class="amt-in" placeholder="予算（円）"
-        value="${budgetMap[cat]||''}" min="0"
+        value="${esc(budgetMap[cat]||'')}" min="0"
         id="bgt-${encodeURIComponent(cat)}" style="width:140px;">
       <span style="font-size:12px;color:var(--text3);">円/月</span>
     </div>`).join('') || '<div style="font-size:12px;color:var(--text3);">CSVを取り込むとカテゴリが表示されます</div>';
@@ -2734,10 +2734,10 @@ function renderManual() {
     const div=document.createElement('div');
     div.className='entry-row';
     div.innerHTML=`
-      <input type="text" placeholder="項目名" value="${esc(row.name)}" oninput="updManual('${type}',${row.id},'name',this.value)">
-      <input type="month" class="month-in" value="${esc(row.month||'')}" title="対象月（未指定なら毎月扱い）" oninput="updManual('${type}',${row.id},'month',this.value)">
-      <input type="number" class="amt-in" placeholder="金額" value="${row.amt||''}" min="0" oninput="updManual('${type}',${row.id},'amt',this.value)">
-      <button class="del-btn" onclick="delRow('${type}',${row.id})">×</button>`;
+      <input type="text" placeholder="項目名" value="${esc(row.name)}" oninput="updManual('${type}',${Number.isSafeInteger(row.id) ? row.id : -1},'name',this.value)">
+      <input type="month" class="month-in" value="${esc(row.month||'')}" title="対象月（未指定なら毎月扱い）" oninput="updManual('${type}',${Number.isSafeInteger(row.id) ? row.id : -1},'month',this.value)">
+      <input type="number" class="amt-in" placeholder="金額" value="${esc(row.amt||'')}" min="0" oninput="updManual('${type}',${Number.isSafeInteger(row.id) ? row.id : -1},'amt',this.value)">
+      <button class="del-btn" onclick="delRow('${type}',${Number.isSafeInteger(row.id) ? row.id : -1})">×</button>`;
     return div;
   };
   ['inc','exp'].forEach(type=>{
