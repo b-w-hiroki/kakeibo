@@ -2125,6 +2125,23 @@ function countDuplicateRows(rows, filename) {
   return { count, files: [...files] };
 }
 
+/* Import preview uses plain text: no file-provided HTML is rendered here. */
+function confirmCSVImport(rows, filename) {
+  const dup = countDuplicateRows(rows, filename);
+  const income = rows.reduce((sum, r) => sum + (r.amt > 0 ? r.amt : 0), 0);
+  const expense = rows.reduce((sum, r) => sum + (r.amt < 0 ? -r.amt : 0), 0);
+  const replacing = Object.prototype.hasOwnProperty.call(csvFileMap, filename);
+  const lines = [
+    `「${filename}」の取込前確認`,
+    `取引 ${rows.length}件 / 収入 ${income.toLocaleString('ja-JP')}円 / 支出 ${expense.toLocaleString('ja-JP')}円`,
+    '※このファイル単体の合計です。既存データとの統合後の合計ではありません。',
+    replacing ? `同名ファイルの既存 ${csvFileMap[filename].length}件を置き換えます。` : '新しいファイルとして追加します。',
+  ];
+  if (dup.count) lines.push(`他ファイルと重複の可能性：${dup.count}件（${dup.files.join('、')}）。そのまま取り込むと二重計上の可能性があります。`);
+  lines.push('続けますか？ キャンセルするとこのファイルは変更しません。');
+  return confirm(lines.join('\n\n'));
+}
+
 /* CSV LOAD */
 function loadFiles(files) {
   let pending = files.length;
@@ -2156,19 +2173,12 @@ function loadFiles(files) {
       }
       if (!rows) showToast(`「${file.name}」を認識できませんでした。収支CSVまたは資産推移CSVをお使いください。`, 'error', 5000);
       else {
-        const dup = countDuplicateRows(rows, file.name);
-        if (dup.count && dup.count === rows.length) {
-          // 全件が既存ファイルと重複＝同じCSVの取り込み直し。二重計上を防ぐため確認する
-          if (!confirm(`「${file.name}」の${rows.length}件はすべて既に取り込み済みです（${dup.files.join('、')}）。\n\nこのまま追加すると二重計上になります。追加しますか？`)) {
-            showToast(`「${file.name}」の取り込みを取り消しました（重複のため）`, 'info', 5000);
-            if (--pending === 0) { saveStorage(); renderChips(); refreshCSV(); }
-            return;
-          }
-        } else if (dup.count) {
-          showToast(`「${file.name}」を読み込みました。うち${dup.count}件は既存データと重複している可能性があります（${dup.files.join('、')}）。`, 'info', 8000);
-        } else {
-          showToast(`「${file.name}」を読み込みました。`, 'success');
+        if (!confirmCSVImport(rows, file.name)) {
+          showToast(`「${file.name}」の取り込みを取り消しました`, 'info');
+          if (--pending === 0) { saveStorage(); renderChips(); refreshCSV(); }
+          return;
         }
+        showToast(`「${file.name}」を読み込みました。`, 'success');
         csvFileMap[file.name] = rows;
         invalidateCSVCache(); // 次のファイルの重複判定が最新データを見るように
       }
@@ -4224,6 +4234,10 @@ function loadAssetHistFile(files) {
         const raw = parseCSV(text);
         const rows = processCSV(raw, file.name);
         if (rows) {
+          if (!confirmCSVImport(rows, file.name)) {
+            showToast(`「${file.name}」の取り込みを取り消しました`, 'info');
+            return;
+          }
           csvFileMap[file.name] = rows;
           saveStorage(); renderChips(); refreshCSV();
           showToast(`「${file.name}」を収支CSVとして読み込みました。`, 'success');
