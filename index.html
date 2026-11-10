@@ -2088,22 +2088,35 @@ function commitAssetImport() {
 
 /* CSV type auto-detection: checks if first data line looks like asset history */
 function isAssetHistCSV(text) {
-  const lines = text.split(/\r?\n/).filter(l => l.trim());
-  if (lines.length < 2) return false;
-  const cols = lines[1].split(',').map(c => c.replace(/^"|"$/g,'').trim());
-  // Asset history: first col is YYYY/MM/DD, second col is large integer (total assets)
-  return /^\d{4}\/\d{2}\/\d{2}$/.test(cols[0]) && parseInt(cols[1]) > 100000;
+  const header = splitCSVLine(text.replace(/^\uFEFF/, '').split(/\r?\n/)[0] || '');
+  return /日付/.test(header[0] || '') && /合計|総資産|資産総額/.test(header[1] || '');
 }
 
-function applyAssetHistData(text) {
-  const rows = parseAssetHistCSV(text);
+function applyAssetHistData(text, filename = '資産推移CSV') {
+  let rows;
+  try { rows = parseAssetHistCSV(text); }
+  catch (error) { showToast(error.message, 'error', 7000); return null; }
   if (!rows.length) return false;
   const byMonth = {};
   rows.forEach(r => { if (!byMonth[r.month]) byMonth[r.month] = r; });
-  assetHistory = Object.values(byMonth).sort((a,b)=>a.month.localeCompare(b.month));
-  saveStorage();
+  const next = Object.values(byMonth).sort((a,b)=>a.month.localeCompare(b.month));
+  const duplicateCount = rows.length - next.length;
+  const preview = [
+    `「${filename}」の資産取込前確認`,
+    `${rows.length}行 → ${next.length}ヶ月分（${next[0].month}〜${next[next.length-1].month}）`,
+    `最新月の総資産 ${next[next.length-1].total.toLocaleString('ja-JP')}円`,
+    assetHistory.length ? `既存の資産推移 ${assetHistory.length}ヶ月分をすべて置き換えます。CSVにない月は残りません。` : '資産推移を新しく登録します。',
+    '収支CSV・手動入力は変更しません。',
+    duplicateCount ? `同じ月の重複 ${duplicateCount}行：CSVで最初に出現する行のみ採用します（日付順への自動変更はしません）。` : '同じ月の重複はありません。',
+    '続けますか？ キャンセルすると保存データは変更しません。'
+  ];
+  if (!confirm(preview.join('\n\n'))) { showToast('資産推移の取り込みを取り消しました', 'info'); return null; }
+  if (pendingBackupRecovery) { showToast('復旧用の元データをバックアップに書き出してから再読み込みしてください。', 'error'); return null; }
+  // One atomic key write: unrelated transaction/manual data cannot be partially overwritten.
+  try { localStorage.setItem('kakeibo_ah', JSON.stringify(next)); }
+  catch (error) { showToast('資産推移の保存に失敗しました。元のデータは変更していません。バックアップや空き容量を確認してください。', 'error', 10000); return null; }
+  assetHistory = next;
   renderAssetHistSummary();
-  // Switch to dashboard tab to show results immediately
   switchTab('dashboard');
   return true;
 }
@@ -2151,9 +2164,9 @@ function loadFiles(files) {
       const text = decodeCSV(ev.target.result);
       // Auto-detect: if it looks like asset history CSV, route accordingly
       if (isAssetHistCSV(text)) {
-        const ok = applyAssetHistData(text);
-        if (!ok) showToast(`「${file.name}」を認識できませんでした。`, 'error', 5000);
-        else showToast(`「${file.name}」を資産推移CSVとして読み込みました。`, 'success');
+        const ok = applyAssetHistData(text, file.name);
+        if (ok === false) showToast(`「${file.name}」を認識できませんでした。`, 'error', 5000);
+        else if (ok) showToast(`「${file.name}」を資産推移CSVとして読み込みました。`, 'success');
         if (--pending === 0) { /* asset history already saved */ }
         return;
       }
@@ -4213,15 +4226,26 @@ let ahChart = null, ahChart2 = null;
 const AH_COLS = ['total','cash','stocks','stocksM','funds','pension','points','other'];
 
 function parseAssetHistCSV(text) {
-  const lines = text.split(/\r?\n/).filter(l => l.trim());
-  if (lines.length < 2) return [];
-  return lines.slice(1).map(line => {
-    const cols = line.split(',').map(c => c.replace(/^"|"$/g,'').trim());
-    if (!cols[0] || !cols[1]) return null;
+  const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2 || !isAssetHistCSV(text)) return [];
+  return lines.slice(1).map((line, index) => {
+    if (!/^(?:"(?:[^"]|"")*"|[^",]*)(?:,(?:"(?:[^"]|"")*"|[^",]*))*$/.test(line)) throw new Error(`資産CSV ${index+2}行目の引用符が不正です。取り込みは行いません。`);
+    const cols = splitCSVLine(line).map(c => c.trim());
+    const match = /^(\d{4})\/(\d{2})\/(\d{2})$/.exec(cols[0]);
+    const date = match && new Date(Date.UTC(+match[1], +match[2]-1, +match[3]));
+    if (!match || date.getUTCFullYear() !== +match[1] || date.getUTCMonth()+1 !== +match[2] || date.getUTCDate() !== +match[3] || cols.length !== AH_COLS.length+1) {
+      throw new Error(`資産CSV ${index+2}行目の日付または列数が不正です。取り込みは行いません。`);
+    }
     const obj = { date: cols[0], month: cols[0].slice(0,7) };
-    AH_COLS.forEach((k,i) => { obj[k] = parseInt(cols[i+1])||0; });
+    AH_COLS.forEach((k,i) => {
+      const raw = cols[i+1];
+      if (!/^-?(?:\d+|\d{1,3}(?:,\d{3})+)$/.test(raw)) throw new Error(`資産CSV ${index+2}行目の金額が不正です。取り込みは行いません。`);
+      const value = raw.replace(/,/g, '');
+      if (!/^-?\d+$/.test(value) || !Number.isSafeInteger(Number(value))) throw new Error(`資産CSV ${index+2}行目の金額が不正です。取り込みは行いません。`);
+      obj[k] = Number(value);
+    });
     return obj;
-  }).filter(Boolean);
+  });
 }
 
 function loadAssetHistFile(files) {
@@ -4246,10 +4270,10 @@ function loadAssetHistFile(files) {
         }
         return;
       }
-      const ok = applyAssetHistData(text);
-      if (!ok) {
+      const ok = applyAssetHistData(text, file.name);
+      if (ok === false) {
         showToast(`「${file.name}」: 資産推移CSVとして認識できませんでした。`, 'error', 5000);
-      } else {
+      } else if (ok) {
         showToast(`「${file.name}」を読み込みました（${assetHistory.length}ヶ月分）。`, 'success');
       }
     };
